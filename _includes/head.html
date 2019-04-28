@@ -3,6 +3,11 @@
     <link rel="canonical" href="{{ site.url }}{% if site.baseurl %}{{ site.baseurl }}{% endif %}{{ page.url | remove_first: '/' }}" />
     <meta name="referrer" content="no-referrer-when-downgrade" />
 
+    <!-- Mathjax Support -->
+    <script type="text/javascript" async
+          src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+
     {% if page.content and page.current == 'post' or page.current == 'about' %}
         {% assign excerpt = page.content | strip_html | truncatewords: 50, "" %}
      {% endif %} <!--title below is coming from _includes/dynamic_title-->
