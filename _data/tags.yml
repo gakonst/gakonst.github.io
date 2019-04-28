@@ -14,3 +14,11 @@ getting-started:
   name: getting-started
   description: False
   cover: False
+technical:
+  name: technical
+  description: Technical writeups, best followed with pen and paper.
+  cover: False
+travel:
+  name: travel
+  description: Stories from my travelling life, accompanied by select pictures.
+  cover: False
