@@ -1,21 +1,15 @@
 ---
 layout: post
 current: post
-cover: 'assets/images/summit.jpg'
+cover: 'assets/images/ethresearch.png'
 navigation: True
 title: A Deep Dive on RSA Accumulators
 date: 2019-04-01
 tags: technical
 class: post-template
-subclass: 'post tag-fiction'
-author: lewis
+subclass: 'post tag-technical'
+author: gakonst
 ---
-
-```go
-for (int i = 0)
-match
-go func
-```
 
 I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford's Applied Cryptography Group.
 
@@ -29,7 +23,7 @@ In this post, I will attempt to make a deep dive on RSA Accumulators while provi
 
 I highly suggest you go through the math by hand for your better understanding.
 
-<iframe src="https://medium.com/media/cdd8c9853e21ced0f3bbe370b8f08018" frameborder=0></iframe>
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Read cryptography papers and do the math by hand or forget everything 2h after you leave your desk.</p>&mdash; Georgios Konstantopoulos (@gakonst) <a href="https://twitter.com/gakonst/status/1076775064337633280?ref_src=twsrc%5Etfw">December 23, 2018</a></blockquote><script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
 
 ### Background
 
@@ -46,11 +40,11 @@ The focus of this post will be on describing the building blocks of RSA Accumula
 
 **Dynamic Accumulator:** “Accumulator which supports addition/deletion of elements with O(1) cost, independent of the number of accumulated elements”
 
-**Universal Accumulator:** “Dynamic Accumulator which supports membership and non-membership proofs”
+**Universal Accumulator:** _Dynamic Accumulator which supports membership and non-membership proofs_
 
-**Batching: **Batch verify *n* proofs faster than verifying a single proof *n* times
+**Batching:** Batch verify *n* proofs faster than verifying a single proof *n* times
 
-**Aggregating: **Aggregate *n* membership roofs in a single constant size proof
+**Aggregating:**  Aggregate *n* membership roofs in a single constant size proof
 
 **Group of Unknown Order: **The [order of a group](https://en.wikipedia.org/wiki/Order_(group_theory)) is the number of elements in its set. Generating a group of unknown order is required for the security of the provided proofs (otherwise the modulo used in the accumulators has a known factorization and fake proofs can be created). Generating it can be done through a multi party computation, but that is insecure if the generating parties are colluding to retrieve the factorization of the generated number. It can be generated without a trusted setup through the usage of [class groups](https://github.com/Chia-Network/vdf-competition/blob/master/classgroups.pdf).
 
