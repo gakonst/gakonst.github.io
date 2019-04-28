@@ -15,8 +15,8 @@ cover: assets/images/blog-cover.jpg
 logo: assets/images/logo.png
 logo_dark: assets/images/favicon.png
 favicon: assets/images/favicon.png
-production_url: https://gakonst.com
-source_url: https://gakonst.com
+production_url: https://gakonst.com/
+source_url: https://gakonst.com/
 CNAME: gakonst.com
 
 # Social info

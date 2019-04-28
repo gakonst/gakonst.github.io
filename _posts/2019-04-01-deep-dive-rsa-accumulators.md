@@ -11,11 +11,10 @@ subclass: 'post tag-technical'
 author: gakonst
 ---
 
-I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford's Applied Cryptography Group.
-
-A Deep Dive on RSA Accumulators
-
 ### by [Georgios Konstantopoulos](http://twitter.com/@gakonst)
+
+I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford's Applied Cryptography Group. This review was included in [MIT's Cryptocurrency Research Review](https://mitcryptocurrencyresearch.substack.com/p/mit-dcis-cryptocurrency-research-c31).
+
 
 ### Preface
 
