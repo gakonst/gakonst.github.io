@@ -1,0 +1,572 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2019-04-29T14:52:48+03:00</updated><id>http://localhost:4000/</id><title type="html">Georgios Konstantopoulos</title><subtitle>Simplified technical insights on security, cryptography and distributed systems.</subtitle><entry><title type="html">A Deep Dive on RSA Accumulators</title><link href="http://localhost:4000/deep-dive-rsa-accumulators" rel="alternate" type="text/html" title="A Deep Dive on RSA Accumulators" /><published>2019-04-01T00:00:00+03:00</published><updated>2019-04-01T00:00:00+03:00</updated><id>http://localhost:4000/deep-dive-rsa-accumulators</id><content type="html" xml:base="http://localhost:4000/deep-dive-rsa-accumulators">&lt;h3 id=&quot;by-georgios-konstantopoulos&quot;&gt;by &lt;a href=&quot;http://twitter.com/@gakonst&quot;&gt;Georgios Konstantopoulos&lt;/a&gt;&lt;/h3&gt;
+
+&lt;p&gt;I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford’s Applied Cryptography Group. This review was included in &lt;a href=&quot;https://mitcryptocurrencyresearch.substack.com/p/mit-dcis-cryptocurrency-research-c31&quot;&gt;MIT’s Cryptocurrency Research Review&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h3 id=&quot;preface&quot;&gt;Preface&lt;/h3&gt;
+
+&lt;p&gt;In this post, I will attempt to make a deep dive on RSA Accumulators while providing a review of the recently released paper by Stanford’s Applied Cryptography Group, &lt;a href=&quot;https://eprint.iacr.org/2018/1188&quot;&gt;Batching Techniques for Accumulators with Applications to IOPs and Stateless Blockchains,&lt;/a&gt; by &lt;a href=&quot;https://twitter.com/benediktbuenz&quot;&gt;Benedikt Bunz,&lt;/a&gt; &lt;a href=&quot;https://twitter.com/benafisch/&quot;&gt;Ben Fisch&lt;/a&gt; and Dan Boneh.&lt;/p&gt;
+
+&lt;p&gt;I highly suggest you go through the math by hand for your better understanding.&lt;/p&gt;
+
+&lt;blockquote class=&quot;twitter-tweet&quot; data-lang=&quot;en&quot;&gt;&lt;p lang=&quot;en&quot; dir=&quot;ltr&quot;&gt;Read cryptography papers and do the math by hand or forget everything 2h after you leave your desk.&lt;/p&gt;&amp;mdash; Georgios Konstantopoulos (@gakonst) &lt;a href=&quot;https://twitter.com/gakonst/status/1076775064337633280?ref_src=twsrc%5Etfw&quot;&gt;December 23, 2018&lt;/a&gt;&lt;/blockquote&gt;
+&lt;script async=&quot;&quot; src=&quot;https://platform.twitter.com/widgets.js&quot; charset=&quot;utf-8&quot;&gt;&lt;/script&gt;
+
+&lt;h3 id=&quot;background&quot;&gt;Background&lt;/h3&gt;
+
+&lt;p&gt;Accumulators are a &lt;a href=&quot;http://www.michaeldemare.com/pubs/owa.pdf&quot;&gt;topic of interest in academia since 1994&lt;/a&gt;. Similarly to a Merkle Tree, they are used to cryptographically commit to the knowledge of a set of data. At a later point in time, proving membership of a subset of the dataset in the dataset can be proven by publishing a proof. In Merkle Trees the proof is called a Merkle Branch (or Merkle Proof), and grows logarithmically to the size of the committed data (commit 16 elements, prove inclusion by revealing log_2(16)=4).&lt;/p&gt;
+
+&lt;p&gt;Accumulators on the other hand, allow proving membership in constant size, as well as batching of proofs for multiple elements (which is not a feature of Merkle trees).&lt;/p&gt;
+
+&lt;p&gt;The focus of this post will be on describing the building blocks of RSA Accumulators, how we can construct proofs of (non-)membership as well as batch them across multiple blocks. This particular technique also has applications in UTXO-Based Plasma, and has given birth to the &lt;em&gt;Plasma Prime&lt;/em&gt; variant. &lt;a href=&quot;https://www.google.com/search?q=%22accumulator%22%2C+%22plasma+prime%22&amp;amp;as_sitesearch=https%3A%2F%2Fethresear.ch%2F&quot;&gt;A lot of effort&lt;/a&gt; is being put into designing an accumulator that allows compaction of the UTXO-set in Plasma.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Disclaimer: My notation is slightly loose in this post for simplicity’s sake (eg not including that $u,w \in G$ or mod N for modular arithmetic).&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;glossary-definitions-from-1&quot;&gt;Glossary (definitions from [1]):&lt;/h3&gt;
+
+&lt;p&gt;&lt;strong&gt;Accumulator:&lt;/strong&gt; “A cryptographic accumulator is a primitive that produces a short binding commitment to a set of elements together with short membership/non-membership proofs for any element in the set.”&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Dynamic Accumulator:&lt;/strong&gt; “Accumulator which supports addition/deletion of elements with O(1) cost, independent of the number of accumulated elements”&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Universal Accumulator:&lt;/strong&gt; &lt;em&gt;Dynamic Accumulator which supports membership and non-membership proofs&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Batching:&lt;/strong&gt; Batch verify &lt;em&gt;n&lt;/em&gt; proofs faster than verifying a single proof &lt;em&gt;n&lt;/em&gt; times&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Aggregating:&lt;/strong&gt;  Aggregate &lt;em&gt;n&lt;/em&gt; membership roofs in a single constant size proof&lt;/p&gt;
+
+&lt;p&gt;**Group of Unknown Order: **The &lt;a href=&quot;https://en.wikipedia.org/wiki/Order_(group_theory)&quot;&gt;order of a group&lt;/a&gt; is the number of elements in its set. Generating a group of unknown order is required for the security of the provided proofs (otherwise the modulo used in the accumulators has a known factorization and fake proofs can be created). Generating it can be done through a multi party computation, but that is insecure if the generating parties are colluding to retrieve the factorization of the generated number. It can be generated without a trusted setup through the usage of &lt;a href=&quot;https://github.com/Chia-Network/vdf-competition/blob/master/classgroups.pdf&quot;&gt;class groups&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2 id=&quot;succinct-proofs-for-hidden-order-groups&quot;&gt;Succinct Proofs for Hidden Order Groups&lt;/h2&gt;
+
+&lt;p&gt;Wesolowski in [2], proposes a proof of knowledge of exponent scheme, where a &lt;em&gt;Prover&lt;/em&gt; is trying to convince a &lt;em&gt;Verifier&lt;/em&gt; that they know a number &lt;em&gt;x&lt;/em&gt; such that, with a known base &lt;em&gt;u, u^x = w&lt;/em&gt; holds.&lt;/p&gt;
+
+&lt;p&gt;Let’s take an example, with base 2 (u=2), and w=16, it would be x=4. How do we do that? We transmit x to the Verifier, they have to perform 2⁴, and check the result against w. If it matches, they’re convinced. The two steps that seem obvious here are:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;the Verifier has to perform u^x: This is a costly operation for large numbers&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;transmitting x to the Verifier: &lt;em&gt;x&lt;/em&gt; might be large, and thus the bandwidth required to transmit it may be non-trivial.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Let’s see what protocols are being proposed to tackle this challenge. These protocols are all interactive, meaning the Verifier and the Prover send each other “challenges” that are used in subsequent steps of the protocol, to make it secure.&lt;/p&gt;
+
+&lt;h3 id=&quot;proof-of-exponentiation-poe-section-31&quot;&gt;Proof of Exponentiation (PoE, section 3.1)&lt;/h3&gt;
+
+&lt;p&gt;First, let’s see how we can convince the Verifier, without them actually having to run the whole exponentiation.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2670/1*bSfa9edH0fxg4Kw_XlUceQ.png&quot; alt=&quot;Proof of Exponentiation (note: current revision of the paper has a typo, and sets Q=g^q instead of u^q in page 8.&quot; /&gt;&lt;em&gt;Proof of Exponentiation (note: current revision of the paper has a typo, and sets Q=g^q instead of u^q in page 8.&lt;/em&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;The protocol is useful, only if the Verifier is able to compute the residue *r *faster than computing u^x. It solves the exponentiation issue, but still requires that the prover transmits a potentially large x to the verifier, or that x is publicly known.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;proof-of-knowledge-of-discrete-log-poke-section-33&quot;&gt;Proof of Knowledge of Discrete Log (PoKE, section 3.3)&lt;/h3&gt;
+
+&lt;p&gt;Instead of transmitting x, we can instead transmit r. The proof becomes (Q,r) and the Verifier must additionally check that &lt;em&gt;r *is less than *l (PoKE&lt;/em&gt; protocol). &lt;strong&gt;*This is insecure when the adversary can freely choose the base u!&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2672/1*a8gwTB0pFf-IkmUFBNRrTA.png&quot; alt=&quot;The verifier got fooled by the Prover that they know z: u^z=w, without knowing z!&quot; /&gt;&lt;em&gt;The verifier got fooled by the Prover that they know z: u^z=w, without knowing z!&lt;/em&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;The detail that breaks the protocol here, is that the Prover* &lt;em&gt;picks the base&lt;/em&gt; u=g^x&lt;em&gt;, so that *x&lt;/em&gt; is [&lt;em&gt;co-prime](https://en.wikipedia.org/wiki/Coprime_integers)&lt;/em&gt; with &lt;em&gt;l&lt;/em&gt;.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;We can be sure that the above protocol works for a base g which is fixed and encoded in the &lt;a href=&quot;https://en.wikipedia.org/wiki/Common_reference_string_model&quot;&gt;Common Reference String (CRS)&lt;/a&gt; — in simpler terms, all parties agree on the base g beforehand and it cannot be chosen arbitrarily by an adversary.&lt;/p&gt;
+
+&lt;p&gt;The protocol can be fixed by:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Proving knowledge of the discrete logarithm &lt;em&gt;x&lt;/em&gt; of &lt;em&gt;z = g^x, *for a fixed *g&lt;/em&gt;&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Prove that the same &lt;em&gt;x *is also the discrete logarithm of *w&lt;/em&gt; base &lt;em&gt;u.&lt;/em&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;So the final protocol (PoKE) is:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2622/1*7zC0fBBAt67V0DxxWWh_pA.png&quot; alt=&quot;Proof is now 2 group elements, Q and Q’. Can we do better?&quot; /&gt;&lt;em&gt;Proof is now 2 group elements, Q and Q’. Can we do better?&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Reducing the proof to one group element can be done by adding an additional interactive step:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2166/1*FLe6gcpuNuMaKu6atDwbpQ.png&quot; alt=&quot;The verifier needs to send an additional challenge \alpha so that the prover cannot create fake proofs&quot; /&gt;&lt;em&gt;The verifier needs to send an additional challenge \alpha so that the prover cannot create fake proofs&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;why-does-the-challenge-have-to-be-a-prime-number&quot;&gt;Why does the challenge have to be a prime number?&lt;/h3&gt;
+
+&lt;p&gt;The challenge &lt;em&gt;l&lt;/em&gt; used in PoE, PoKE, PoKE2 (and their non-interactive variants), must be a prime number which is either provided as a challenge from the Verifier, or is produced by the prover through a collision resistant hash function that maps to a prime number domain (more on this in the next section). Why is that?&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Huge thanks to Benedikt Bunz for taking the time to explain this attack to me.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;In fact, the challenge &lt;em&gt;l does not&lt;/em&gt; have to be a prime number, but it must have a large prime factor that is hard to predict.&lt;/p&gt;
+
+&lt;p&gt;Let’s attack the PoE protocol, when *l *has small prime factors (we also call these numbers &lt;a href=&quot;https://en.wikipedia.org/wiki/Smooth_number&quot;&gt;B-smooth numbers&lt;/a&gt;):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2330/1*4RklYXW0uGl4DhJI2e0Tfg.png&quot; alt=&quot;A 5-smooth challenge is weak and enables an attacker to fool a Verifier about knowledge of a discrete logarithm&quot; /&gt;&lt;em&gt;A 5-smooth challenge is weak and enables an attacker to fool a Verifier about knowledge of a discrete logarithm&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;The attacker successfully fooled the Verifier into believing they know the discrete logarithm of y base g, when they only knew the discrete logarithm of y base w.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;The above attack would not work if the challenge had a large prime factor which the attacker wasn’t able to predict.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;To avoid this attack, we just set the challenge to be a large prime number the attacker cannot predict in advance. For RSA Accumulators as we’ll see later, the challenge &lt;strong&gt;must&lt;/strong&gt; be larger than any of the accumulated primes (otherwise the above precomputation attack becomes trivial).&lt;/p&gt;
+
+&lt;h3 id=&quot;from-interactive-to-non-interactive-proofs&quot;&gt;From Interactive to Non-Interactive Proofs.&lt;/h3&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Using the Fiat-Shamir heuristic, any interactive protocol can be turned into non-interactive, in the random oracle model (assuming we have a secure generator of randomness, such as a secure cryptographic hash function).&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;PoKE2 requires two steps of interaction, one to give a generator &lt;em&gt;g *selected by the Verifier&lt;/em&gt; *to the Prover, and one to send the challenges *l *and *a. *Instead, we can hash the current “transcript” and use the output as these values. Since we are operating in the random oracle model, it does not make a difference if these values were picked by the Verifier to prevent the Prover from cheating, or if they come from a hash function, since the two should be statistically indistinguishable!&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2244/1*NtRNvukFhE1t90yjkbcnbw.png&quot; alt=&quot;Each side generates the challenge parameters without interaction, each time by using the hash function and the current transcript of the protocol&quot; /&gt;&lt;em&gt;Each side generates the challenge parameters without interaction, each time by using the hash function and the current transcript of the protocol&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;The above techniques involve proving knowledge of a preimage for the function *w = f(x) = u^x , *for scalar values.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;The techniques can also be extended to support proofs of knowledge of &lt;a href=&quot;https://en.wikipedia.org/wiki/Group_homomorphism&quot;&gt;a homomorphism&lt;/a&gt; preimage , ie prove knowledge of length-n vector &lt;strong&gt;&lt;em&gt;x&lt;/em&gt;&lt;/strong&gt; such that &lt;em&gt;φ(&lt;strong&gt;x&lt;/strong&gt;) = w.&lt;/em&gt;
+They can also be performed in zero-knowledge. PoKE requires sending &lt;em&gt;g^x&lt;/em&gt;, for a known g. When verifying the correctness of a protocol, we assume the existence of a Simulator who is able to simulate &lt;em&gt;g^x&lt;/em&gt; by knowing the witness &lt;em&gt;x&lt;/em&gt;. This leaks information and is thus not zero-knowledge! The technique used by the authors involves blinding the inputs which are being proven by utilizing a Schnorr-like protocol and Pedersen Commitments.
+&lt;a href=&quot;https://cryptoservices.github.io/cryptography/2017/07/21/Sigs.html&quot;&gt;Take a detour here&lt;/a&gt; if you’re not familiar with these terms.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;the-rsa-accumulator&quot;&gt;The RSA Accumulator&lt;/h2&gt;
+
+&lt;p&gt;We gave the definition of an accumulator in the glossary. We will now discuss the construction of a universal accumulator which supports batched membership proofs, and non-membership proofs.&lt;/p&gt;
+
+&lt;p&gt;Constructing the accumulator, requires picking a modulus N from a group of unknown order, which can be picked from an RSA Group (e.g. &lt;a href=&quot;https://en.wikipedia.org/wiki/RSA_numbers#RSA-2048&quot;&gt;RSA-2048&lt;/a&gt;, &lt;em&gt;if you trust RSA Laboratories&lt;/em&gt;), or generated through a trusted setup.&lt;/p&gt;
+
+&lt;p&gt;The initial state of the RSA Accumulator is the generator sampled from the group of unknown order, g and implies that the list of elements in the accumulator is empty [].&lt;/p&gt;
+
+&lt;p&gt;As pointed in [3], an accumulator must have the quasi-commutative mathematical property.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*cpRCdBrfR5MczgWqWgOMFw.png&quot; alt=&quot;Quasi-commutative property for two elements.&quot; /&gt;&lt;em&gt;Quasi-commutative property for two elements.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2308/1*xfLQ59HvA1IYBtgbCiM4sg.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Adding an element x to an accumulator A is done by raising the accumulator to the element: A’ = A^x mod N . (I’ll omit the mod N from here on for simplicity)&lt;/p&gt;
+
+&lt;h3 id=&quot;proving-membership&quot;&gt;Proving Membership&lt;/h3&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*a7AtNFZDNVXtZL8rkKpCUw.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Proving membership of an element in an accumulator requires revealing the value of the element, and a &lt;em&gt;witness&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;Proving membership of an element in an accumulator requires revealing the value of the element, and a &lt;em&gt;witness&lt;/em&gt;.&lt;/p&gt;
+
+&lt;p&gt;The witness or co-factor, is the product of all the values in the accumulator except the value we are proving inclusion of.&lt;/p&gt;
+
+&lt;p&gt;The *(value, witness) *pair is the proof of inclusion in the set.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;What if the value is a large number and transmitting it to the verifier and the exponentiation have non negligible costs?&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;This is where the above NI-PoKE2 protocol comes in. Instead of sending the proof as above, we can prove knowledge of a witness which gives a valid proof! This may seem unlikely, given that our examples are simple, but we’ll see how it may happen in the batching membership proofs section below.&lt;/p&gt;
+
+&lt;h3 id=&quot;proving-non-membership&quot;&gt;Proving Non-Membership&lt;/h3&gt;
+
+&lt;p&gt;The proof of non-membership requires calculating [&lt;em&gt;Bezout’s Coefficients](https://en.wikipedia.org/wiki/B%C3%A9zout%27s_identity)&lt;/em&gt; of the element we’re proving and the product of the elements in the set. An excellent guide on this topic can be found &lt;a href=&quot;https://brilliant.org/wiki/bezouts-identity/&quot;&gt;here&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*fbSx5q9sYpN-lF80uae-1g.png&quot; alt=&quot;Create a non-membership witness&quot; /&gt;&lt;em&gt;Create a non-membership witness&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*DYRjPeskTKt3Tfzoe5RdZg.png&quot; alt=&quot;Verify a non-membership witness&quot; /&gt;&lt;em&gt;Verify a non-membership witness&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;As an example:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2206/1*m6o0ArQob4h1zDMI2pcjKA.png&quot; alt=&quot;Proving exclusion of the value 7, in a set with {3,5,11}&quot; /&gt;&lt;em&gt;Proving exclusion of the value 7, in a set with {3,5,11}&lt;/em&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Vitalik Buterin also proposes a way to prove non-membership &lt;a href=&quot;https://ethresear.ch/t/rsa-accumulators-for-plasma-cash-history-reduction/3739&quot;&gt;here,&lt;/a&gt; which he conceived indepedently. (no proof of its security is provided, so might want to be careful if using it!)&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;hashing-to-prime-numbers&quot;&gt;Hashing to Prime Numbers&lt;/h3&gt;
+
+&lt;p&gt;Odd prime numbers (ie primes without 2) are required both for the Proof of Knowledge protocols, but also for the accumulator elements. If the elements accumulated are not primes, then an adversary could fool a verifier about the inclusion of an element, without the element being in the set.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*3384KuG6lMPUOaew0wOKoQ.png&quot; alt=&quot;Valid proof of membership for a non-accumulated element!&quot; /&gt;&lt;em&gt;Valid proof of membership for a non-accumulated element!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;As a result we must restrict the accumulated elements to be primes, otherwise an adversary can prove inclusion about any of the factors of an accumulated element (in this case, prove inclusion of 3 because it is a factor of 6).&lt;/p&gt;
+
+&lt;h3 id=&quot;aggregating-and-batching-proofs&quot;&gt;Aggregating and Batching Proofs&lt;/h3&gt;
+
+&lt;p&gt;Recall the definitions:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Aggregate:&lt;/strong&gt; combining many proofs in 1 constant size proof&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Batch:&lt;/strong&gt; verify many proofs at once rather than verifying all proofs separately&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;Aggregating and batching membership proofs&lt;/strong&gt; is trivially done by multiplying the values being proven and providing a co-factor for them together:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*edZdd7txNPZu04ujk7DlzQ.png&quot; alt=&quot;Aggregating proofs of membership is simple!&quot; /&gt;&lt;em&gt;Aggregating proofs of membership is simple!&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;It can be quickly seen, that if we want to create an aggregate proof of membership for a lot of elements, both the value becomes large to transmit, and the verifier needs to perform expensive exponentiations. For that, we utilize NI-PoKE2, to prove that we know the cofactor g⁶⁵, without transmitting 231 to the verifier, or the verifier computing the expensive exponentiations (we &lt;strong&gt;batched&lt;/strong&gt; the verification!).&lt;/p&gt;
+
+&lt;p&gt;**Batching non-membership proofs **is done by calculating Bezout’s coefficients for the product of the elements (a’, b’), and then have the same proof as before (g^a’, b’). The size of the combined witness is approximately the same as with giving two separate witnesses.&lt;/p&gt;
+
+&lt;p&gt;This can be solved by instead setting the proof to be (g^a’, A^b’) . For this to be secure, the prover additionally must provide a NI-PoKE2 to prove knowledge of b’ .&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*_rBUkwdoRq5O-txIwFcA4Q.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;The NI-PoKE2 at step 3 is required for safety, otherwise an adversary could set&lt;/p&gt;
+
+&lt;p&gt;v = g * d^(-xy) and fool the verifier, without knowing b.&lt;/p&gt;
+
+&lt;p&gt;This can be made more efficient by applying a NI-PoE so that the verifier does not need to perform the exponentiation in the final step.&lt;/p&gt;
+
+&lt;p&gt;An efficient algorithm to &lt;strong&gt;aggregate non-membership proofs&lt;/strong&gt; in a constant-size witness is not provided.&lt;/p&gt;
+
+&lt;h2 id=&quot;removing-the-trusted-setup&quot;&gt;Removing the trusted setup&lt;/h2&gt;
+
+&lt;p&gt;All exponentiations are done modulo N, which is a number with an unknown prime factorization. That is because all proofs provided are in the generic group model for groups of unknown order (Page 2), and require the &lt;a href=&quot;https://en.wikipedia.org/wiki/Strong_RSA_assumption&quot;&gt;Strong RSA Assumption&lt;/a&gt; and the &lt;a href=&quot;http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf&quot;&gt;Adaptive Root Assumption&lt;/a&gt;.&lt;/p&gt;
+
+&lt;p&gt;Generating a public key without knowing an associated private key is hard. As argued in page 2 of [2], it is possible to perform a secure multiparty computation to create the required number, but one would have to trust that the parties who participated in the trusted setup did not collude to retrieve the secret. Wesolowski in [2] points out an alternative via so-called “class groups”:&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;“A better approach would be to use the class group of an imaginary quadratic order. Indeed, one can easily generate an imaginary quadratic order by choosing a random discriminant, and when the discriminant is large enough, the order of the class group cannot be computed.”&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;There is currently an &lt;a href=&quot;https://github.com/Chia-Network/vdf-competition/&quot;&gt;ongoing competition by Chia&lt;/a&gt; for the efficient computation of such class groups, along with a &lt;a href=&quot;https://github.com/Chia-Network/vdf-competition/blob/master/classgroups.pdf&quot;&gt;comprehensive document&lt;/a&gt; on the required theory behind them.&lt;/p&gt;
+
+&lt;h2 id=&quot;conclusion&quot;&gt;Conclusion&lt;/h2&gt;
+&lt;blockquote&gt;
+  &lt;h1 id=&quot;if-you-made-it-up-to-here-congratulations&quot;&gt;If you made it up to here congratulations!&lt;/h1&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;We briefly described how RSA Accumulators work as well as how to construct schemes to efficiently prove membership and non-membership of elements in the accumulator. The authors additionally provide ways to construct *position-binding commitments, *also known as *vector commitments *with batched openings at various indexes, which is not a feature of merkle trees. The authors construct the first vector commitment scheme which can perform O(1) openings (opening means proving revealing the value of an element at a certain index in the commitment) and O(1) public parameters (public parameters are generated during initialization of the commitment scheme, &lt;a href=&quot;https://eprint.iacr.org/2011/495.pdf&quot;&gt;previous constructions required linear or even quadratic parameters&lt;/a&gt;).&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;a href=&quot;https://cs.nyu.edu/courses/spring12/CSCI-GA.3210-001/lect/lecture14.pdf&quot;&gt;Here is a great lecture on Commitment Schemes&lt;/a&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h3 id=&quot;use-cases&quot;&gt;Use Cases&lt;/h3&gt;
+
+&lt;p&gt;These accumulators can be used to create stateless blockchains, in which nodes do not need to store the whole state to be convinced about which blocks are valid. They can also be used to implement efficient UTXO commitments, which allow users to issue transactions without knowing the whole UTXO set. Finally, vector commitments can be used to create short Interactive-Oracle-Proofs, which require a prover and verifier to play a game where the prover tries to answer the verifier’s queries about some committed data. This process is made much more efficient than when using a Merkle Tree.&lt;/p&gt;
+
+&lt;h3 id=&quot;whats-next&quot;&gt;What’s next?&lt;/h3&gt;
+
+&lt;p&gt;This was a great paper, which introduced and formalized a lot of primitives which can be used for the scalability of blockchain constructions.&lt;/p&gt;
+
+&lt;p&gt;In particular, the RSA Accumulator has gathered a lot of the Plasma research community’s interest, as to how it can be utilized for compaction of UTXO history in Plasma Cash. There has been a number of posts on &lt;a href=&quot;https://ethresear.ch/c/plasma&quot;&gt;ethresear.ch&lt;/a&gt; lately on how this can be constructed. As a result, in the next post I’ll perform a review of the current schemes, their advantages and disadvantages, as well as which one is most likely to be used for reducing history in Plasma Cash (+variants).&lt;/p&gt;
+
+&lt;p&gt;I am also very interested in a non-fungible Plasma construction which may utilize Vector Commitments.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Who knows, maybe &lt;a href=&quot;https://github.com/finalitylabs/research/tree/master/plasma/vector&quot;&gt;somebody is working on this already?&lt;/a&gt;&lt;/p&gt;
+  &lt;h1 id=&quot;follow-me-on-twitter-for-more-consistent-technical-insights&quot;&gt;&lt;a href=&quot;http://twitter.com/@gakonst&quot;&gt;Follow me on Twitter&lt;/a&gt; for more consistent technical insights.&lt;/h1&gt;
+  &lt;h1 id=&quot;stay-tuned-for-the-next-post-a-taxonomy-of-rsa-accumulators-on-plasma&quot;&gt;Stay tuned for the next post: &lt;strong&gt;A taxonomy of RSA Accumulators on Plasma!&lt;/strong&gt;&lt;/h1&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;references&quot;&gt;References&lt;/h2&gt;
+
+&lt;p&gt;[1] &lt;a href=&quot;https://eprint.iacr.org/2018/1188&quot;&gt;https://eprint.iacr.org/2018/1188&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;[2] &lt;a href=&quot;https://eprint.iacr.org/2018/623&quot;&gt;https://eprint.iacr.org/2018/623&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;[3] &lt;a href=&quot;http://www.michaeldemare.com/pubs/owa.pdf&quot;&gt;http://www.michaeldemare.com/pubs/owa.pdf&lt;/a&gt;&lt;/p&gt;</content><author><name>Georgios Konstantopoulos</name></author><category term="technical" /><summary type="html">by Georgios Konstantopoulos</summary></entry><entry><title type="html">How I hacked 40 Websites in 7 minutes</title><link href="http://localhost:4000/how-i-hacked-40-websites-in-7-minutes" rel="alternate" type="text/html" title="How I hacked 40 Websites in 7 minutes" /><published>2019-04-01T00:00:00+03:00</published><updated>2019-04-01T00:00:00+03:00</updated><id>http://localhost:4000/how-i-hacked-40-websites-in-7-minutes</id><content type="html" xml:base="http://localhost:4000/how-i-hacked-40-websites-in-7-minutes">&lt;h3 id=&quot;how-i-went-from-0-knowledge-to-owning-35-databases-in-7-minutes-and-how-after-a-short-break-i-proceed-to-total-server-takeover&quot;&gt;How I went from 0 knowledge to owning 35 databases in 7 minutes and how after a short break I proceed to total server takeover.&lt;/h3&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;Last summer I started learning about information security and hacking. Over the last year I’ve played in various wargames, capture the flag and penetration testing simulations, continuously improving my hacking skills and learning new things about ‘how to make computers deviate from their expected behavior’.&lt;/p&gt;
+
+&lt;p&gt;Long story short, my experience was always limited to simulated environments, and since I consider myself a white-hat hacker (aka one of the good guys) I never stuck my nose into other peoples’ businesses — quite literally.&lt;/p&gt;
+
+&lt;p&gt;Until now. This will be a detailed story about how I hacked into a server which hosted 40 (this is an exact number) websites and my findings.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;strong&gt;Note:&lt;/strong&gt; Some prerequisite CS knowledge is needed to follow through the technical parts of the article.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;A friend messaged me that an &lt;a href=&quot;https://www.owasp.org/index.php/Cross-site_Scripting_(XSS)&quot;&gt;XSS vulnerability&lt;/a&gt; was found in his website and that he wants me to take a further look. This is an important stage, as I am inclined to ask for him to formally express that I have his permission to perform a full test on his web application and on the server hosting it. The answer was &lt;strong&gt;positive.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/0*Lnr40S2JhxSY3JaM.gif&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;In the rest of the post I’ll be refering to my friend’s site as &lt;strong&gt;http://example.com&lt;/strong&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;The first move is always to enumerate and find as much information as you can about your enemy — while trying to alarm them as little as possible.&lt;/p&gt;
+
+&lt;p&gt;At this stage we trigger our timer and start scanning.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;nmap &lt;span class=&quot;nt&quot;&gt;--top-ports&lt;/span&gt; 1000 &lt;span class=&quot;nt&quot;&gt;-T4&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-sC&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;[&lt;/span&gt;http://example.com]&lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;http://victim.com&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+    Nmap scan report &lt;span class=&quot;k&quot;&gt;for &lt;/span&gt;example.com &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;redacted&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    Host is up &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;0.077s latency&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;.&lt;/span&gt;
+    rDNS record &lt;span class=&quot;k&quot;&gt;for&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;redacted&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;: &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;redacted&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    Not shown: 972 filtered ports
+    PORT      STATE  SERVICE
+    21/tcp    open   ftp
+    22/tcp    open   ssh
+    | ssh-hostkey: 
+    |   &lt;span class=&quot;o&quot;&gt;{&lt;/span&gt;redacted&lt;span class=&quot;o&quot;&gt;}&lt;/span&gt;
+    80/tcp    open   http
+    | http-methods: 
+    |_  Potentially risky methods: TRACE
+    |_http-title: Victim Site
+    139/tcp   open   netbios-ssn
+    443/tcp   open   https
+    | http-methods: 
+    |_  Potentially risky methods: TRACE
+    |_http-title: Site doesn&lt;span class=&quot;s1&quot;&gt;'t have a title (text/html; charset=UTF-8).
+    |_{redacted}
+    445/tcp   open   microsoft-ds
+    5901/tcp  open   vnc-1
+    | vnc-info: 
+    |   Protocol version: 3.8
+    |   Security types: 
+    |_    VNC Authentication (2)
+    8080/tcp  open   http-proxy
+    |_http-title: 400 Bad Request
+    8081/tcp  open   blackice-icecap
+&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;The scan completed in about 2 minutes.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;That’s a lot of open ports! By observing that the &lt;a href=&quot;https://en.wikipedia.org/wiki/File_Transfer_Protocol&quot;&gt;FTP&lt;/a&gt; (port 21) and SMB (ports 139/445) ports are open we can guess that the server is used for file hosting and for file sharing, along with it being a webserver (ports 80/443 and proxies at 8080/8081).&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/0*9A9HPkmj-NLW7Pe3.&quot; alt=&quot;From The Art of War. Enumerating is key.&quot; /&gt;&lt;em&gt;From The Art of War. Enumerating is key.&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Doing a UDP port scan and scanning more than the top 1000 ports would be considered if the above scan’s information was not enough. The only port we are allowed to interact with (without credentials) is port 80/443.&lt;/p&gt;
+
+&lt;p&gt;Without wasting any time, I launch gobuster to enumerate for any interesting files on the webserver while I’ll be digging for information manually.&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;gobuster &lt;span class=&quot;nt&quot;&gt;-u&lt;/span&gt; http://example.com &lt;span class=&quot;nt&quot;&gt;-w&lt;/span&gt; /usr/share/wordlists/dirbuster/directory-list-2.3-medium.txt &lt;span class=&quot;nt&quot;&gt;-t&lt;/span&gt; 100
+
+/admin
+/login
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;Turns out the /admin path was an “admin tool” which allowed authenticated users to modify stuff on the webserver. It required credentials and since we have neither a username nor a password we move on. (spoiler: gobuster did not find anything of value)&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;So far we are about 3 minutes in. Nothing useful, yet.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Browsing to the website we see that it asks us to login. No problem, we create an account with a &lt;a href=&quot;http://www.fakemailgenerator.com&quot;&gt;dummy e-mail&lt;/a&gt;, click the confirmation e-mail and log-in after few seconds.&lt;/p&gt;
+
+&lt;p&gt;The website welcomes us and prompts us to navigate to our profile and update our profile picture. How kind.&lt;/p&gt;
+
+&lt;p&gt;Seeing that the website looks custom built, I am inclined to test for an &lt;a href=&quot;https://www.owasp.org/index.php/Unrestricted_File_Upload&quot;&gt;Unrestricted File Upload&lt;/a&gt; vulnerability. On my terminal I execute:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nb&quot;&gt;echo&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;&amp;lt;?php system(&lt;/span&gt;&lt;span class=&quot;se&quot;&gt;\$&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;_GET['cmd']); ?&amp;gt;&quot;&lt;/span&gt; &lt;span class=&quot;o&quot;&gt;&amp;gt;&lt;/span&gt; exploit.php
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;I try uploading the “image”, and bingo! The uploader allows the *exploit.php *file to get uploaded. Of course it has no thumbnail, but that means my file got uploaded somewhere.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*qVLgi2XpE-49BlExZ4F3kA.png&quot; alt=&quot;Get the exploit’s location&quot; /&gt;&lt;em&gt;Get the exploit’s location&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Here we would expect that the uploader does some sort of processing on the uploaded file, checks its file extension and replaces with the accepted file extension like .jpeg, .jpg in order to avoid remote code execution by an attacker uploading malicious code, like yours truly.&lt;/p&gt;
+
+&lt;p&gt;People care about security after all.&lt;/p&gt;
+
+&lt;p&gt;right? Right? …RIGHT?&lt;/p&gt;
+
+&lt;blockquote&gt;
+  &lt;p&gt;&lt;code class=&quot;highlighter-rouge&quot;&gt;Copy image address&lt;/code&gt; results in the following url being copied to our clipboard: &lt;code class=&quot;highlighter-rouge&quot;&gt;http://www.example.com/admin/ftp/objects/XXXXXXXXXXXX.php&lt;/code&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;So it seems we have our webshell ready and functioning:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*Iom7SAIfa5FEYqmlowq4bA.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Seeing that the webserver runs** perl** scripts (really, perl?) we grab a perl reverse shell from our favorite &lt;a href=&quot;http://pentestmonkey.net/cheat-sheet/shells/reverse-shell-cheat-sheet&quot;&gt;cheatsheet&lt;/a&gt;, set the IP/Port and we are rewarded with a low-privileged shell — sorry, no screenshot.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;~5 minutes in the assessment, and we already have a low-privilege shell.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;To my huge surprise, the server was not hosting only 1 website, but &lt;strong&gt;40 different ones&lt;/strong&gt;. Sadly I haven’t kept screenshots of every single detail but the output was along the lines of:&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;$ ls /var/www
+
+access.log site1/ site2/ site3/ {... the list goes on}
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;You get the point. Surprisingly, read access to **ALL **the hosted websites was available, which meant I could read all the sites’ backend code. I limited myself to example.com’s code.&lt;/p&gt;
+
+&lt;p&gt;Notably, inside the cgi-admin/pages directory, all the perl scripts were connecting to a mysql database &lt;strong&gt;as root&lt;/strong&gt;. The credentials for the database were there in cleartext. Let these be &lt;em&gt;root:pwned42&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Sure enough, the server was running MariaDB and I had to resort to this &lt;a href=&quot;https://github.com/dockerfile/mariadb/issues/3&quot;&gt;issue&lt;/a&gt; before being able to access the database. Afterwards we execute:&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;mysql &lt;span class=&quot;nt&quot;&gt;-u&lt;/span&gt; root &lt;span class=&quot;nt&quot;&gt;-p&lt;/span&gt; &lt;span class=&quot;nt&quot;&gt;-h&lt;/span&gt; localhost victimdbname
+Password: pwned42
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;And we’re in the database with root privileges.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*4lU93dNnB95iwLwJ41oEJg.png&quot; alt=&quot;“use databasename;” allows us to access any of the 35 databases and view &amp;amp; modify their contents&quot; /&gt;&lt;em&gt;“use databasename;” allows us to access any of the 35 databases and view &amp;amp; modify their contents&lt;/em&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;h1 id=&quot;after-just-7-minutes-we-have-full-readwrite-access-to-the-contents-of-35-databases&quot;&gt;After just 7 minutes, we have full read/write access to the contents of &lt;strong&gt;35(!) databases&lt;/strong&gt;&lt;/h1&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Here I am morally obligated to stop, and disclose my findings so far. The potential damage is already huge.&lt;/p&gt;
+
+&lt;h3 id=&quot;what-an-attacker-could-do&quot;&gt;What an attacker could do:&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Dump the contents of all the databases, as described &lt;a href=&quot;https://stackoverflow.com/questions/9497869/export-and-import-all-mysql-databases-at-one-time&quot;&gt;here&lt;/a&gt;, resulting in the data of all 35 companies to be leaked in the public domain.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Drop all the databases, effectively deleting the data of the 35 compaines&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Leave a backdoor for persistent access as apache with a cronjob, as described &lt;a href=&quot;http://blog.tobiasforkel.de/en/2015/03/19/setup-cron-job-for-apache-user/&quot;&gt;here&lt;/a&gt;, in case they want a return trip.&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;I should note here that the mysql process was running as root so I figured I’d try executing ! whoami in hopes of getting root. Unfortunately I was still apache.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Time to take a break. Stop the timer.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;h2 id=&quot;what-can-further-go-wrong&quot;&gt;What can further go wrong?&lt;/h2&gt;
+
+&lt;p&gt;After disclosing my findings, I get further permission to dig deeper.&lt;/p&gt;
+
+&lt;p&gt;Before looking in ways to escalate my privileges to root and be able to cause massive potential damage, I was looking at what other interesting files I could read with my limited user.&lt;/p&gt;
+
+&lt;p&gt;At that point, I remembered about the open SMB ports. That meant that there should be some folder somewhere that is being shared in the system among users. After a little enumeration, the following appears at the directory /home/samba/secured (please excuse me for the mass censorship):&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*ocvbxfNLYltft2S5Ps3PvQ.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;Inside all of these directories, there were files of each user of the **hosting company. **That included all kinds of sensitive data, amongst others:&lt;/p&gt;
+
+&lt;ul&gt;
+  &lt;li&gt;
+    &lt;p&gt;.psd/.ai files (Designers know how important it is to keep these private, it is their work and their techniques after all)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Cookie sqlite files&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Invoices&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Pirated e-books (chuckled when I saw this)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;&lt;strong&gt;Credentials to their WiFi SSIDS&lt;/strong&gt;&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h3 id=&quot;what-an-attacker-could-do-1&quot;&gt;What an attacker could do:&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Camp outside the company’s offices, login to their intranet and perform all kinds of fun attacks you can do on local networks&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Dump all the sensitive data listed above to the public domain&lt;/p&gt;
+    &lt;blockquote&gt;
+      &lt;p&gt;It took some time to go through the folders and realize how serious this issue is.
+One more break.&lt;/p&gt;
+    &lt;/blockquote&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h2 id=&quot;the-final-blow&quot;&gt;The final blow&lt;/h2&gt;
+
+&lt;p&gt;After looking around for a little longer as *apache *I decide it is time to go for the big fish, alas get root access. I refer to a popular &lt;a href=&quot;https://blog.g0tmi1k.com/2011/08/basic-linux-privilege-escalation/&quot;&gt;cheatsheet&lt;/a&gt; and start enumerating the system for interesting files.&lt;/p&gt;
+
+&lt;p&gt;Due to my digging so far I had already gone through most of these techniques already and did not seem to be able to find something that would increase my foothold.&lt;/p&gt;
+
+&lt;p&gt;That’s when it hit me. In the Capture the Flag challenges that I am used to playing, the operating system is usually patched and it is some intentionally misconfigured service that eventually gives you the sought-after root privilege. In the real world however, &lt;strong&gt;people do not patch.&lt;/strong&gt;&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;I mean, look at Equifax &lt;em&gt;(couldn’t resist).&lt;/em&gt;&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;What kind of Linux is the server running?&lt;/p&gt;
+
+&lt;div class=&quot;language-bash highlighter-rouge&quot;&gt;&lt;div class=&quot;highlight&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;&lt;span class=&quot;nv&quot;&gt;$ &lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;cat&lt;/span&gt; /etc/issue
+CentOS Linux release 7.2.1511 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Core&lt;span class=&quot;o&quot;&gt;)&lt;/span&gt;
+&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;/div&gt;
+
+&lt;p&gt;What version is the kernel?&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*314bUv-XA3_UIvgEKDP9PQ.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;p&gt;This looks like an old Kernel version.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/0*vhbpEPj1gk0MUnxf.png&quot; alt=&quot;Does this remind you of something? If not, have a read [here](https://www.theguardian.com/technology/2016/oct/21/dirty-cow-linux-vulnerability-found-after-nine-years) (hint: it is VERY serious)&quot; /&gt;&lt;em&gt;Does this remind you of something? If not, have a read &lt;a href=&quot;https://www.theguardian.com/technology/2016/oct/21/dirty-cow-linux-vulnerability-found-after-nine-years&quot;&gt;here&lt;/a&gt; (hint: it is VERY serious)&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;I found &lt;a href=&quot;http://davemacaulay.com/easily-test-dirty-cow-cve-2016-5195-vulnerability/&quot;&gt;this&lt;/a&gt; blogpost which pointed me to test if the Kernel was vulnerable with the script found here.&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*7a2tb6P72aNH4shZW0qx0Q.png&quot; alt=&quot;Timestamps &amp;amp; Firefox restored sites redacted&quot; /&gt;&lt;em&gt;Timestamps &amp;amp; Firefox restored sites redacted&lt;/em&gt;&lt;/p&gt;
+
+&lt;p&gt;Followed by:&lt;/p&gt;
+
+&lt;p&gt;&lt;img src=&quot;https://cdn-images-1.medium.com/max/2000/1*3ZoWXbpfqZHdJUn0Ia2JWw.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
+
+&lt;h3 id=&quot;game-over&quot;&gt;Game over.&lt;/h3&gt;
+
+&lt;p&gt;I instantly wrote an e-mail fully disclosing the details and potential impact of every step as described above, and wrapped the night. Whew.&lt;/p&gt;
+
+&lt;h3 id=&quot;what-an-attacker-could-do-2&quot;&gt;What an attacker could do:&lt;/h3&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;Read/modify ALL files on the server&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Leave a persistent backdoor (as done with apache)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Install and potentially spread malware into the server’s intranet&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Install ransomware (taking the databases of 35 companies and all the hosting company’s data hostage is no small thing)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Use the server as a cryptocurrency miner&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Use the server as a proxy&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Use the server as a C2C server&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Use the server as a part of a botnet&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;… (use your imagination)&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;**rm -rf / **(not even joking)&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;The next day, I got contacted by my friend (who came in contact with the company operating the server) and was informed that the bug in the file uploader was fixed.&lt;/p&gt;
+
+&lt;h2 id=&quot;tldr&quot;&gt;tl;dr&lt;/h2&gt;
+
+&lt;p&gt;Summarizing,we found:&lt;/p&gt;
+
+&lt;ol&gt;
+  &lt;li&gt;
+    &lt;p&gt;A web application with an Unrestricted File Upload vulnerability, which led into a low privilege shell.&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Credentials to mysql database, which led to read/write access to 35 databases&lt;/p&gt;
+  &lt;/li&gt;
+  &lt;li&gt;
+    &lt;p&gt;Lots of readable sensitive files&lt;/p&gt;
+  &lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Finally, we abused an unpatched kernel to obtain root access.&lt;/p&gt;
+
+&lt;h2 id=&quot;mitigations--suggestions&quot;&gt;Mitigations — Suggestions&lt;/h2&gt;
+
+&lt;p&gt;Let’s start by the uploader which gave us our inital foothold. Since the whole web application’s backend was written in perl — and as I do not speak perl — I cannot really suggest fixes on that.&lt;/p&gt;
+
+&lt;p&gt;One fix I would suggest would be not to use perl in 2017 but that is just my opinion, feel free to prove me wrong.&lt;/p&gt;
+
+&lt;p&gt;Regarding the filesystem, I recommend taking great care in assigning proper file permissions for users, according to the &lt;a href=&quot;https://en.wikipedia.org/wiki/Principle_of_least_privilege&quot;&gt;principle of least privilege&lt;/a&gt;. That way, even if a low privileged user like apache gets access, they are not able to read any sensitive files.&lt;/p&gt;
+
+&lt;p&gt;Running all websites in the same server is a bad idea, I’m not sure if a dockerized approach would solve the issue.&lt;/p&gt;
+
+&lt;p&gt;Having the same credentials for all databases is for sure a bad idea.&lt;/p&gt;
+&lt;blockquote&gt;
+  &lt;p&gt;Single points of failure are generally not good to have.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;Finally, &lt;strong&gt;PATCH EVERYTHING&lt;/strong&gt;. It’s literally 1 command: &lt;code class=&quot;highlighter-rouge&quot;&gt;su -c 'yum update'&lt;/code&gt; (CentOS specific)&lt;/p&gt;
+
+&lt;h3 id=&quot;follow-my-work-on-twitter-for-more-technical-insights&quot;&gt;Follow my work on &lt;a href=&quot;https://twitter.com/gakonst&quot;&gt;Twitter&lt;/a&gt; for more technical insights.&lt;/h3&gt;</content><author><name>Georgios Konstantopoulos</name></author><category term="technical" /><summary type="html">How I went from 0 knowledge to owning 35 databases in 7 minutes and how after a short break I proceed to total server takeover.</summary></entry></feed>

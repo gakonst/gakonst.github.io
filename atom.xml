@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title> - Articles</title>
+    <description>Simplified technical insights on security, cryptography and distributed systems.</description>
+    <link>
+    http://localhost:4000</link>
+    
+      
+      <item>
+        <title>A Deep Dive on RSA Accumulators</title>
+        
+          <description>&lt;h3 id=&quot;by-georgios-konstantopoulos&quot;&gt;by &lt;a href=&quot;http://twitter.com/@gakonst&quot;&gt;Georgios Konstantopoulos&lt;/a&gt;&lt;/h3&gt;
+
+</description>
+        
+        <pubDate>Mon, 01 Apr 2019 00:00:00 +0300</pubDate>
+        <link>
+        http://localhost:4000/deep-dive-rsa-accumulators</link>
+        <guid isPermaLink="true">http://localhost:4000/deep-dive-rsa-accumulators</guid>
+      </item>
+      
+    
+      
+      <item>
+        <title>How I hacked 40 Websites in 7 minutes</title>
+        
+          <description>&lt;h3 id=&quot;how-i-went-from-0-knowledge-to-owning-35-databases-in-7-minutes-and-how-after-a-short-break-i-proceed-to-total-server-takeover&quot;&gt;How I went from 0 knowledge to owning 35 databases in 7 minutes and how after a short break I proceed to total server takeover.&lt;/h3&gt;
+
+</description>
+        
+        <pubDate>Mon, 01 Apr 2019 00:00:00 +0300</pubDate>
+        <link>
+        http://localhost:4000/how-i-hacked-40-websites-in-7-minutes</link>
+        <guid isPermaLink="true">http://localhost:4000/how-i-hacked-40-websites-in-7-minutes</guid>
+      </item>
+      
+    
+  </channel>
+</rss>

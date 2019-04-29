@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <!-- Document Settings -->
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+    <!-- Base Meta -->
+    <!-- dynamically fixing the title for tag/author pages -->
+
+
+
+    <title>A Deep Dive on RSA Accumulators</title>
+    <meta name="HandheldFriendly" content="True" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Styles'n'Scripts -->
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/screen.edited.css" />
+    <link rel="stylesheet" type="text/css" href="/assets/built/syntax.css" />
+    <!-- highlight.js -->
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css">
+    <style>.hljs { background: none; }</style>
+
+    <!--[if IE]>
+        <style>
+            p, ol, ul{
+                width: 100%;
+            }
+            blockquote{
+                width: 100%;
+            }
+        </style>
+    <![endif]-->
+    
+    <!-- This tag outputs SEO meta+structured data and other important settings -->
+    <meta name="description" content="Simplified technical insights on security, cryptography and distributed systems." />
+    <link rel="shortcut icon" href="http://localhost:4000/assets/images/favicon.png" type="image/png" />
+    <link rel="canonical" href="http://localhost:4000/deep-dive-rsa-accumulators" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+
+    <!-- Mathjax Support -->
+    <script type="text/javascript" async
+          src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
+    </script>
+
+     <!--title below is coming from _includes/dynamic_title-->
+    <meta property="og:site_name" content="Georgios Konstantopoulos" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="A Deep Dive on RSA Accumulators" />
+    <meta property="og:description" content="by Georgios Konstantopoulos I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford’s Applied Cryptography Group. This review was included in MIT’s Cryptocurrency Research Review. Preface In this post, I will attempt to make" />
+    <meta property="og:url" content="http://localhost:4000/deep-dive-rsa-accumulators" />
+    <meta property="og:image" content="http://localhost:4000/assets/images/ethresearch.png" />
+    <meta property="article:publisher" content="https://www.facebook.com/" />
+    <meta property="article:author" content="https://www.facebook.com/" />
+    <meta property="article:published_time" content="2019-04-01T00:00:00+03:00" />
+    <meta property="article:modified_time" content="2019-04-01T00:00:00+03:00" />
+    <meta property="article:tag" content="Technical" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="A Deep Dive on RSA Accumulators" />
+    <meta name="twitter:description" content="by Georgios Konstantopoulos I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford’s Applied Cryptography Group. This review was included in MIT’s Cryptocurrency Research Review. Preface In this post, I will attempt to make" />
+    <meta name="twitter:url" content="http://localhost:4000/" />
+    <meta name="twitter:image" content="http://localhost:4000/assets/images/ethresearch.png" />
+    <meta name="twitter:label1" content="Written by" />
+    <meta name="twitter:data1" content="Georgios Konstantopoulos" />
+    <meta name="twitter:label2" content="Filed under" />
+    <meta name="twitter:data2" content="Technical" />
+    <meta name="twitter:site" content="@gakonst" />
+    <meta name="twitter:creator" content="@gakonst" />
+    <meta property="og:image:width" content="1400" />
+    <meta property="og:image:height" content="933" />
+
+    <script type="application/ld+json">
+{
+    "@context": "https://schema.org",
+    "@type": "Website",
+    "publisher": {
+        "@type": "Organization",
+        "name": "Georgios Konstantopoulos",
+        "logo": "http://localhost:4000/false"
+    },
+    "url": "http://localhost:4000/deep-dive-rsa-accumulators",
+    "image": {
+        "@type": "ImageObject",
+        "url": "http://localhost:4000/assets/images/ethresearch.png",
+        "width": 2000,
+        "height": 666
+    },
+    "mainEntityOfPage": {
+        "@type": "WebPage",
+        "@id": "http://localhost:4000/deep-dive-rsa-accumulators"
+    },
+    "description": "by Georgios Konstantopoulos I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford’s Applied Cryptography Group. This review was included in MIT’s Cryptocurrency Research Review. Preface In this post, I will attempt to make"
+}
+    </script>
+
+    <!-- <script type="text/javascript" src="https://demo.ghost.io/public/ghost-sdk.min.js?v=724281a32e"></script>
+    <script type="text/javascript">
+    ghost.init({
+    	clientId: "ghost-frontend",
+    	clientSecret: "f84a07a72b17"
+    });
+    </script> -->
+
+    <meta name="generator" content="Jekyll 3.6.2" />
+    <link rel="alternate" type="application/rss+xml" title="A Deep Dive on RSA Accumulators" href="/feed.xml" />
+
+
+</head>
+<body class="post-template">
+
+    <div class="site-wrapper">
+        <!-- All the main content gets inserted here, index.hbs, post.hbs, etc -->
+        <!-- default -->
+
+<!-- The tag above means: insert everything in this file
+into the {body} of the default.hbs template -->
+
+<header class="site-header outer">
+    <div class="inner">
+        <nav class="site-nav">
+    <div class="site-nav-left">
+        
+            
+                <a class="site-nav-logo" href="http://localhost:4000/">Georgios Konstantopoulos</a>
+            
+        
+        
+            <ul class="nav" role="menu">
+    <li class="nav-home" role="menuitem"><a href="/">Home</a></li>
+    <li class="nav-about" role="menuitem"><a href="/about/">About</a></li>
+    <li class="nav-talks" role="menuitem"><a href="/talks/">Talks</a></li>
+    <!-- <li class="nav-getting-started" role="menuitem"><a href="/tag/getting-started/">Getting Started</a></li> -->
+    <!-- <li class="nav-try-ghost" role="menuitem"><a href="https://ghost.org">Try Ghost</a></li> -->
+</ul>
+
+        
+    </div>
+    <div class="site-nav-right">
+        <div class="social-links">
+            <!--  -->
+            
+                <a class="social-link social-link-tw" href="https://twitter.com/gakonst" target="_blank" rel="noopener"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+</a>
+            
+        </div>
+        <!--  -->
+    </div>
+</nav>
+
+    </div>
+</header>
+
+<!-- Everything inside the #post tags pulls data from the post -->
+<!-- #post -->
+
+<main id="site-main" class="site-main outer" role="main">
+    <div class="inner">
+
+        <article class="post-full post tag-technical ">
+
+            <header class="post-full-header">
+                <section class="post-full-meta">
+                    <time class="post-full-meta-date" datetime=" 1 April 2019"> 1 April 2019</time>
+                    
+                        <span class="date-divider">/</span>
+                        
+                            
+                               <a href='/tag/technical/'>TECHNICAL</a>
+                            
+                        
+                    
+                </section>
+                <h1 class="post-full-title">A Deep Dive on RSA Accumulators</h1>
+            </header>
+
+            
+            <figure class="post-full-image" style="background-image: url(/assets/images/ethresearch.png)">
+            </figure>
+            
+
+            <section class="post-full-content">
+                <div class="kg-card-markdown">
+                    <h3 id="by-georgios-konstantopoulos">by <a href="http://twitter.com/@gakonst">Georgios Konstantopoulos</a></h3>
+
+<p>I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford’s Applied Cryptography Group. This review was included in <a href="https://mitcryptocurrencyresearch.substack.com/p/mit-dcis-cryptocurrency-research-c31">MIT’s Cryptocurrency Research Review</a>.</p>
+
+<h3 id="preface">Preface</h3>
+
+<p>In this post, I will attempt to make a deep dive on RSA Accumulators while providing a review of the recently released paper by Stanford’s Applied Cryptography Group, <a href="https://eprint.iacr.org/2018/1188">Batching Techniques for Accumulators with Applications to IOPs and Stateless Blockchains,</a> by <a href="https://twitter.com/benediktbuenz">Benedikt Bunz,</a> <a href="https://twitter.com/benafisch/">Ben Fisch</a> and Dan Boneh.</p>
+
+<p>I highly suggest you go through the math by hand for your better understanding.</p>
+
+<blockquote class="twitter-tweet" data-lang="en"><p lang="en" dir="ltr">Read cryptography papers and do the math by hand or forget everything 2h after you leave your desk.</p>&mdash; Georgios Konstantopoulos (@gakonst) <a href="https://twitter.com/gakonst/status/1076775064337633280?ref_src=twsrc%5Etfw">December 23, 2018</a></blockquote>
+<script async="" src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+<h3 id="background">Background</h3>
+
+<p>Accumulators are a <a href="http://www.michaeldemare.com/pubs/owa.pdf">topic of interest in academia since 1994</a>. Similarly to a Merkle Tree, they are used to cryptographically commit to the knowledge of a set of data. At a later point in time, proving membership of a subset of the dataset in the dataset can be proven by publishing a proof. In Merkle Trees the proof is called a Merkle Branch (or Merkle Proof), and grows logarithmically to the size of the committed data (commit 16 elements, prove inclusion by revealing log_2(16)=4).</p>
+
+<p>Accumulators on the other hand, allow proving membership in constant size, as well as batching of proofs for multiple elements (which is not a feature of Merkle trees).</p>
+
+<p>The focus of this post will be on describing the building blocks of RSA Accumulators, how we can construct proofs of (non-)membership as well as batch them across multiple blocks. This particular technique also has applications in UTXO-Based Plasma, and has given birth to the <em>Plasma Prime</em> variant. <a href="https://www.google.com/search?q=%22accumulator%22%2C+%22plasma+prime%22&amp;as_sitesearch=https%3A%2F%2Fethresear.ch%2F">A lot of effort</a> is being put into designing an accumulator that allows compaction of the UTXO-set in Plasma.</p>
+<blockquote>
+  <p>Disclaimer: My notation is slightly loose in this post for simplicity’s sake (eg not including that $u,w \in G$ or mod N for modular arithmetic).</p>
+</blockquote>
+
+<h3 id="glossary-definitions-from-1">Glossary (definitions from [1]):</h3>
+
+<p><strong>Accumulator:</strong> “A cryptographic accumulator is a primitive that produces a short binding commitment to a set of elements together with short membership/non-membership proofs for any element in the set.”</p>
+
+<p><strong>Dynamic Accumulator:</strong> “Accumulator which supports addition/deletion of elements with O(1) cost, independent of the number of accumulated elements”</p>
+
+<p><strong>Universal Accumulator:</strong> <em>Dynamic Accumulator which supports membership and non-membership proofs</em></p>
+
+<p><strong>Batching:</strong> Batch verify <em>n</em> proofs faster than verifying a single proof <em>n</em> times</p>
+
+<p><strong>Aggregating:</strong>  Aggregate <em>n</em> membership roofs in a single constant size proof</p>
+
+<p>**Group of Unknown Order: **The <a href="https://en.wikipedia.org/wiki/Order_(group_theory)">order of a group</a> is the number of elements in its set. Generating a group of unknown order is required for the security of the provided proofs (otherwise the modulo used in the accumulators has a known factorization and fake proofs can be created). Generating it can be done through a multi party computation, but that is insecure if the generating parties are colluding to retrieve the factorization of the generated number. It can be generated without a trusted setup through the usage of <a href="https://github.com/Chia-Network/vdf-competition/blob/master/classgroups.pdf">class groups</a>.</p>
+
+<h2 id="succinct-proofs-for-hidden-order-groups">Succinct Proofs for Hidden Order Groups</h2>
+
+<p>Wesolowski in [2], proposes a proof of knowledge of exponent scheme, where a <em>Prover</em> is trying to convince a <em>Verifier</em> that they know a number <em>x</em> such that, with a known base <em>u, u^x = w</em> holds.</p>
+
+<p>Let’s take an example, with base 2 (u=2), and w=16, it would be x=4. How do we do that? We transmit x to the Verifier, they have to perform 2⁴, and check the result against w. If it matches, they’re convinced. The two steps that seem obvious here are:</p>
+
+<ol>
+  <li>
+    <p>the Verifier has to perform u^x: This is a costly operation for large numbers</p>
+  </li>
+  <li>
+    <p>transmitting x to the Verifier: <em>x</em> might be large, and thus the bandwidth required to transmit it may be non-trivial.</p>
+  </li>
+</ol>
+
+<p>Let’s see what protocols are being proposed to tackle this challenge. These protocols are all interactive, meaning the Verifier and the Prover send each other “challenges” that are used in subsequent steps of the protocol, to make it secure.</p>
+
+<h3 id="proof-of-exponentiation-poe-section-31">Proof of Exponentiation (PoE, section 3.1)</h3>
+
+<p>First, let’s see how we can convince the Verifier, without them actually having to run the whole exponentiation.</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2670/1*bSfa9edH0fxg4Kw_XlUceQ.png" alt="Proof of Exponentiation (note: current revision of the paper has a typo, and sets Q=g^q instead of u^q in page 8." /><em>Proof of Exponentiation (note: current revision of the paper has a typo, and sets Q=g^q instead of u^q in page 8.</em></p>
+<blockquote>
+  <p>The protocol is useful, only if the Verifier is able to compute the residue *r *faster than computing u^x. It solves the exponentiation issue, but still requires that the prover transmits a potentially large x to the verifier, or that x is publicly known.</p>
+</blockquote>
+
+<h3 id="proof-of-knowledge-of-discrete-log-poke-section-33">Proof of Knowledge of Discrete Log (PoKE, section 3.3)</h3>
+
+<p>Instead of transmitting x, we can instead transmit r. The proof becomes (Q,r) and the Verifier must additionally check that <em>r *is less than *l (PoKE</em> protocol). <strong>*This is insecure when the adversary can freely choose the base u!</strong></p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2672/1*a8gwTB0pFf-IkmUFBNRrTA.png" alt="The verifier got fooled by the Prover that they know z: u^z=w, without knowing z!" /><em>The verifier got fooled by the Prover that they know z: u^z=w, without knowing z!</em></p>
+<blockquote>
+  <p>The detail that breaks the protocol here, is that the Prover* <em>picks the base</em> u=g^x<em>, so that *x</em> is [<em>co-prime](https://en.wikipedia.org/wiki/Coprime_integers)</em> with <em>l</em>.</p>
+</blockquote>
+
+<p>We can be sure that the above protocol works for a base g which is fixed and encoded in the <a href="https://en.wikipedia.org/wiki/Common_reference_string_model">Common Reference String (CRS)</a> — in simpler terms, all parties agree on the base g beforehand and it cannot be chosen arbitrarily by an adversary.</p>
+
+<p>The protocol can be fixed by:</p>
+
+<ol>
+  <li>
+    <p>Proving knowledge of the discrete logarithm <em>x</em> of <em>z = g^x, *for a fixed *g</em></p>
+  </li>
+  <li>
+    <p>Prove that the same <em>x *is also the discrete logarithm of *w</em> base <em>u.</em></p>
+  </li>
+</ol>
+
+<p>So the final protocol (PoKE) is:</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2622/1*7zC0fBBAt67V0DxxWWh_pA.png" alt="Proof is now 2 group elements, Q and Q’. Can we do better?" /><em>Proof is now 2 group elements, Q and Q’. Can we do better?</em></p>
+
+<p>Reducing the proof to one group element can be done by adding an additional interactive step:</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2166/1*FLe6gcpuNuMaKu6atDwbpQ.png" alt="The verifier needs to send an additional challenge \alpha so that the prover cannot create fake proofs" /><em>The verifier needs to send an additional challenge \alpha so that the prover cannot create fake proofs</em></p>
+
+<h3 id="why-does-the-challenge-have-to-be-a-prime-number">Why does the challenge have to be a prime number?</h3>
+
+<p>The challenge <em>l</em> used in PoE, PoKE, PoKE2 (and their non-interactive variants), must be a prime number which is either provided as a challenge from the Verifier, or is produced by the prover through a collision resistant hash function that maps to a prime number domain (more on this in the next section). Why is that?</p>
+<blockquote>
+  <p>Huge thanks to Benedikt Bunz for taking the time to explain this attack to me.</p>
+</blockquote>
+
+<p>In fact, the challenge <em>l does not</em> have to be a prime number, but it must have a large prime factor that is hard to predict.</p>
+
+<p>Let’s attack the PoE protocol, when *l *has small prime factors (we also call these numbers <a href="https://en.wikipedia.org/wiki/Smooth_number">B-smooth numbers</a>):</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2330/1*4RklYXW0uGl4DhJI2e0Tfg.png" alt="A 5-smooth challenge is weak and enables an attacker to fool a Verifier about knowledge of a discrete logarithm" /><em>A 5-smooth challenge is weak and enables an attacker to fool a Verifier about knowledge of a discrete logarithm</em></p>
+
+<p>The attacker successfully fooled the Verifier into believing they know the discrete logarithm of y base g, when they only knew the discrete logarithm of y base w.</p>
+<blockquote>
+  <p>The above attack would not work if the challenge had a large prime factor which the attacker wasn’t able to predict.</p>
+</blockquote>
+
+<p>To avoid this attack, we just set the challenge to be a large prime number the attacker cannot predict in advance. For RSA Accumulators as we’ll see later, the challenge <strong>must</strong> be larger than any of the accumulated primes (otherwise the above precomputation attack becomes trivial).</p>
+
+<h3 id="from-interactive-to-non-interactive-proofs">From Interactive to Non-Interactive Proofs.</h3>
+<blockquote>
+  <p>Using the Fiat-Shamir heuristic, any interactive protocol can be turned into non-interactive, in the random oracle model (assuming we have a secure generator of randomness, such as a secure cryptographic hash function).</p>
+</blockquote>
+
+<p>PoKE2 requires two steps of interaction, one to give a generator <em>g *selected by the Verifier</em> *to the Prover, and one to send the challenges *l *and *a. *Instead, we can hash the current “transcript” and use the output as these values. Since we are operating in the random oracle model, it does not make a difference if these values were picked by the Verifier to prevent the Prover from cheating, or if they come from a hash function, since the two should be statistically indistinguishable!</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2244/1*NtRNvukFhE1t90yjkbcnbw.png" alt="Each side generates the challenge parameters without interaction, each time by using the hash function and the current transcript of the protocol" /><em>Each side generates the challenge parameters without interaction, each time by using the hash function and the current transcript of the protocol</em></p>
+
+<p>The above techniques involve proving knowledge of a preimage for the function *w = f(x) = u^x , *for scalar values.</p>
+<blockquote>
+  <p>The techniques can also be extended to support proofs of knowledge of <a href="https://en.wikipedia.org/wiki/Group_homomorphism">a homomorphism</a> preimage , ie prove knowledge of length-n vector <strong><em>x</em></strong> such that <em>φ(<strong>x</strong>) = w.</em>
+They can also be performed in zero-knowledge. PoKE requires sending <em>g^x</em>, for a known g. When verifying the correctness of a protocol, we assume the existence of a Simulator who is able to simulate <em>g^x</em> by knowing the witness <em>x</em>. This leaks information and is thus not zero-knowledge! The technique used by the authors involves blinding the inputs which are being proven by utilizing a Schnorr-like protocol and Pedersen Commitments.
+<a href="https://cryptoservices.github.io/cryptography/2017/07/21/Sigs.html">Take a detour here</a> if you’re not familiar with these terms.</p>
+</blockquote>
+
+<h2 id="the-rsa-accumulator">The RSA Accumulator</h2>
+
+<p>We gave the definition of an accumulator in the glossary. We will now discuss the construction of a universal accumulator which supports batched membership proofs, and non-membership proofs.</p>
+
+<p>Constructing the accumulator, requires picking a modulus N from a group of unknown order, which can be picked from an RSA Group (e.g. <a href="https://en.wikipedia.org/wiki/RSA_numbers#RSA-2048">RSA-2048</a>, <em>if you trust RSA Laboratories</em>), or generated through a trusted setup.</p>
+
+<p>The initial state of the RSA Accumulator is the generator sampled from the group of unknown order, g and implies that the list of elements in the accumulator is empty [].</p>
+
+<p>As pointed in [3], an accumulator must have the quasi-commutative mathematical property.</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*cpRCdBrfR5MczgWqWgOMFw.png" alt="Quasi-commutative property for two elements." /><em>Quasi-commutative property for two elements.</em></p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2308/1*xfLQ59HvA1IYBtgbCiM4sg.png" alt="" /></p>
+
+<p>Adding an element x to an accumulator A is done by raising the accumulator to the element: A’ = A^x mod N . (I’ll omit the mod N from here on for simplicity)</p>
+
+<h3 id="proving-membership">Proving Membership</h3>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*a7AtNFZDNVXtZL8rkKpCUw.png" alt="" /></p>
+
+<p>Proving membership of an element in an accumulator requires revealing the value of the element, and a <em>witness</em>.</p>
+
+<p>Proving membership of an element in an accumulator requires revealing the value of the element, and a <em>witness</em>.</p>
+
+<p>The witness or co-factor, is the product of all the values in the accumulator except the value we are proving inclusion of.</p>
+
+<p>The *(value, witness) *pair is the proof of inclusion in the set.</p>
+<blockquote>
+  <p>What if the value is a large number and transmitting it to the verifier and the exponentiation have non negligible costs?</p>
+</blockquote>
+
+<p>This is where the above NI-PoKE2 protocol comes in. Instead of sending the proof as above, we can prove knowledge of a witness which gives a valid proof! This may seem unlikely, given that our examples are simple, but we’ll see how it may happen in the batching membership proofs section below.</p>
+
+<h3 id="proving-non-membership">Proving Non-Membership</h3>
+
+<p>The proof of non-membership requires calculating [<em>Bezout’s Coefficients](https://en.wikipedia.org/wiki/B%C3%A9zout%27s_identity)</em> of the element we’re proving and the product of the elements in the set. An excellent guide on this topic can be found <a href="https://brilliant.org/wiki/bezouts-identity/">here</a>.</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*fbSx5q9sYpN-lF80uae-1g.png" alt="Create a non-membership witness" /><em>Create a non-membership witness</em></p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*DYRjPeskTKt3Tfzoe5RdZg.png" alt="Verify a non-membership witness" /><em>Verify a non-membership witness</em></p>
+
+<p>As an example:</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2206/1*m6o0ArQob4h1zDMI2pcjKA.png" alt="Proving exclusion of the value 7, in a set with {3,5,11}" /><em>Proving exclusion of the value 7, in a set with {3,5,11}</em></p>
+<blockquote>
+  <p>Vitalik Buterin also proposes a way to prove non-membership <a href="https://ethresear.ch/t/rsa-accumulators-for-plasma-cash-history-reduction/3739">here,</a> which he conceived indepedently. (no proof of its security is provided, so might want to be careful if using it!)</p>
+</blockquote>
+
+<h3 id="hashing-to-prime-numbers">Hashing to Prime Numbers</h3>
+
+<p>Odd prime numbers (ie primes without 2) are required both for the Proof of Knowledge protocols, but also for the accumulator elements. If the elements accumulated are not primes, then an adversary could fool a verifier about the inclusion of an element, without the element being in the set.</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*3384KuG6lMPUOaew0wOKoQ.png" alt="Valid proof of membership for a non-accumulated element!" /><em>Valid proof of membership for a non-accumulated element!</em></p>
+
+<p>As a result we must restrict the accumulated elements to be primes, otherwise an adversary can prove inclusion about any of the factors of an accumulated element (in this case, prove inclusion of 3 because it is a factor of 6).</p>
+
+<h3 id="aggregating-and-batching-proofs">Aggregating and Batching Proofs</h3>
+
+<p>Recall the definitions:</p>
+
+<ul>
+  <li>
+    <p><strong>Aggregate:</strong> combining many proofs in 1 constant size proof</p>
+  </li>
+  <li>
+    <p><strong>Batch:</strong> verify many proofs at once rather than verifying all proofs separately</p>
+  </li>
+</ul>
+
+<p><strong>Aggregating and batching membership proofs</strong> is trivially done by multiplying the values being proven and providing a co-factor for them together:</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*edZdd7txNPZu04ujk7DlzQ.png" alt="Aggregating proofs of membership is simple!" /><em>Aggregating proofs of membership is simple!</em></p>
+
+<p>It can be quickly seen, that if we want to create an aggregate proof of membership for a lot of elements, both the value becomes large to transmit, and the verifier needs to perform expensive exponentiations. For that, we utilize NI-PoKE2, to prove that we know the cofactor g⁶⁵, without transmitting 231 to the verifier, or the verifier computing the expensive exponentiations (we <strong>batched</strong> the verification!).</p>
+
+<p>**Batching non-membership proofs **is done by calculating Bezout’s coefficients for the product of the elements (a’, b’), and then have the same proof as before (g^a’, b’). The size of the combined witness is approximately the same as with giving two separate witnesses.</p>
+
+<p>This can be solved by instead setting the proof to be (g^a’, A^b’) . For this to be secure, the prover additionally must provide a NI-PoKE2 to prove knowledge of b’ .</p>
+
+<p><img src="https://cdn-images-1.medium.com/max/2000/1*_rBUkwdoRq5O-txIwFcA4Q.png" alt="" /></p>
+
+<p>The NI-PoKE2 at step 3 is required for safety, otherwise an adversary could set</p>
+
+<p>v = g * d^(-xy) and fool the verifier, without knowing b.</p>
+
+<p>This can be made more efficient by applying a NI-PoE so that the verifier does not need to perform the exponentiation in the final step.</p>
+
+<p>An efficient algorithm to <strong>aggregate non-membership proofs</strong> in a constant-size witness is not provided.</p>
+
+<h2 id="removing-the-trusted-setup">Removing the trusted setup</h2>
+
+<p>All exponentiations are done modulo N, which is a number with an unknown prime factorization. That is because all proofs provided are in the generic group model for groups of unknown order (Page 2), and require the <a href="https://en.wikipedia.org/wiki/Strong_RSA_assumption">Strong RSA Assumption</a> and the <a href="http://crypto.stanford.edu/~dabo/papers/VDFsurvey.pdf">Adaptive Root Assumption</a>.</p>
+
+<p>Generating a public key without knowing an associated private key is hard. As argued in page 2 of [2], it is possible to perform a secure multiparty computation to create the required number, but one would have to trust that the parties who participated in the trusted setup did not collude to retrieve the secret. Wesolowski in [2] points out an alternative via so-called “class groups”:</p>
+<blockquote>
+  <p>“A better approach would be to use the class group of an imaginary quadratic order. Indeed, one can easily generate an imaginary quadratic order by choosing a random discriminant, and when the discriminant is large enough, the order of the class group cannot be computed.”</p>
+</blockquote>
+
+<p>There is currently an <a href="https://github.com/Chia-Network/vdf-competition/">ongoing competition by Chia</a> for the efficient computation of such class groups, along with a <a href="https://github.com/Chia-Network/vdf-competition/blob/master/classgroups.pdf">comprehensive document</a> on the required theory behind them.</p>
+
+<h2 id="conclusion">Conclusion</h2>
+<blockquote>
+  <h1 id="if-you-made-it-up-to-here-congratulations">If you made it up to here congratulations!</h1>
+</blockquote>
+
+<p>We briefly described how RSA Accumulators work as well as how to construct schemes to efficiently prove membership and non-membership of elements in the accumulator. The authors additionally provide ways to construct *position-binding commitments, *also known as *vector commitments *with batched openings at various indexes, which is not a feature of merkle trees. The authors construct the first vector commitment scheme which can perform O(1) openings (opening means proving revealing the value of an element at a certain index in the commitment) and O(1) public parameters (public parameters are generated during initialization of the commitment scheme, <a href="https://eprint.iacr.org/2011/495.pdf">previous constructions required linear or even quadratic parameters</a>).</p>
+<blockquote>
+  <p><a href="https://cs.nyu.edu/courses/spring12/CSCI-GA.3210-001/lect/lecture14.pdf">Here is a great lecture on Commitment Schemes</a></p>
+</blockquote>
+
+<h3 id="use-cases">Use Cases</h3>
+
+<p>These accumulators can be used to create stateless blockchains, in which nodes do not need to store the whole state to be convinced about which blocks are valid. They can also be used to implement efficient UTXO commitments, which allow users to issue transactions without knowing the whole UTXO set. Finally, vector commitments can be used to create short Interactive-Oracle-Proofs, which require a prover and verifier to play a game where the prover tries to answer the verifier’s queries about some committed data. This process is made much more efficient than when using a Merkle Tree.</p>
+
+<h3 id="whats-next">What’s next?</h3>
+
+<p>This was a great paper, which introduced and formalized a lot of primitives which can be used for the scalability of blockchain constructions.</p>
+
+<p>In particular, the RSA Accumulator has gathered a lot of the Plasma research community’s interest, as to how it can be utilized for compaction of UTXO history in Plasma Cash. There has been a number of posts on <a href="https://ethresear.ch/c/plasma">ethresear.ch</a> lately on how this can be constructed. As a result, in the next post I’ll perform a review of the current schemes, their advantages and disadvantages, as well as which one is most likely to be used for reducing history in Plasma Cash (+variants).</p>
+
+<p>I am also very interested in a non-fungible Plasma construction which may utilize Vector Commitments.</p>
+<blockquote>
+  <p>Who knows, maybe <a href="https://github.com/finalitylabs/research/tree/master/plasma/vector">somebody is working on this already?</a></p>
+  <h1 id="follow-me-on-twitter-for-more-consistent-technical-insights"><a href="http://twitter.com/@gakonst">Follow me on Twitter</a> for more consistent technical insights.</h1>
+  <h1 id="stay-tuned-for-the-next-post-a-taxonomy-of-rsa-accumulators-on-plasma">Stay tuned for the next post: <strong>A taxonomy of RSA Accumulators on Plasma!</strong></h1>
+</blockquote>
+
+<h2 id="references">References</h2>
+
+<p>[1] <a href="https://eprint.iacr.org/2018/1188">https://eprint.iacr.org/2018/1188</a></p>
+
+<p>[2] <a href="https://eprint.iacr.org/2018/623">https://eprint.iacr.org/2018/623</a></p>
+
+<p>[3] <a href="http://www.michaeldemare.com/pubs/owa.pdf">http://www.michaeldemare.com/pubs/owa.pdf</a></p>
+
+                </div>
+            </section>
+
+            <!-- Email subscribe form at the bottom of the page -->
+            
+
+            <footer class="post-full-footer">
+                <!-- Everything inside the #author tags pulls data from the author -->
+                <!-- #author-->
+                
+                    
+                        <section class="author-card">
+                            
+                                <img class="author-profile-image" src="/assets/images/gakonst.jpg" alt="gakonst" />
+                            
+                            <section class="author-card-content">
+                                <h4 class="author-card-name"><a href="/author/gakonst">Georgios Konstantopoulos</a></h4>
+                                
+                                    <p>Cryptocurrency & Security Consultant</p>
+                                
+                            </section>
+                        </section>
+                        <div class="post-full-footer-right">
+                            <a class="author-card-button" href="/author/gakonst">Read More</a>
+                        </div>
+                    
+                
+                <!-- /author  -->
+            </footer>
+
+            <!-- If you use Disqus comments, just uncomment this block.
+            The only thing you need to change is "test-apkdzgmqhj" - which
+            should be replaced with your own Disqus site-id. -->
+            
+
+        </article>
+
+    </div>
+</main>
+
+<!-- Links to Previous/Next posts -->
+<aside class="read-next outer">
+    <div class="inner">
+        <div class="read-next-feed">
+            
+                
+                
+                
+                
+                    <article class="read-next-card"
+                        
+                            style="background-image: url(/assets/images/blog-cover.jpg)"
+                        
+                    >
+                        <header class="read-next-card-header">
+                            <small class="read-next-card-header-sitetitle">&mdash; Georgios Konstantopoulos &mdash;</small>
+                            
+                                <h3 class="read-next-card-header-title"><a href="/tag/technical/">Technical</a></h3>
+                            
+                        </header>
+                        <div class="read-next-divider"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 14.5s2 3 5 3 5.5-2.463 5.5-5.5S21 6.5 18 6.5c-5 0-7 11-12 11C2.962 17.5.5 15.037.5 12S3 6.5 6 6.5s4.5 3.5 4.5 3.5"/></svg>
+</div>
+                        <div class="read-next-card-content">
+                            <ul>
+                                
+                                
+                                  
+                                    
+                                  
+                                
+                                  
+                                    
+                                        
+                                        
+                                            <li><a href="/how-i-hacked-40-websites-in-7-minutes">How I hacked 40 Websites in 7 minutes</a></li>
+                                        
+                                    
+                                  
+                                
+                            </ul>
+                        </div>
+                        <footer class="read-next-card-footer">
+                            <a href="/tag/technical/">
+                                
+                                    See all 1 posts  →
+                                
+                            </a>
+                        </footer>
+                    </article>
+                
+            
+
+            <!-- If there's a next post, display it using the same markup included from - partials/post-card.hbs -->
+            
+
+            <!-- If there's a previous post, display it using the same markup included from - partials/post-card.hbs -->
+            
+                
+
+    <article class="post-card post-template">
+        
+            <a class="post-card-image-link" href="/how-i-hacked-40-websites-in-7-minutes">
+                <div class="post-card-image" style="background-image: url(/assets/images/hacked-40mins.png)"></div>
+            </a>
+        
+        <div class="post-card-content">
+            <a class="post-card-content-link" href="/how-i-hacked-40-websites-in-7-minutes">
+                <header class="post-card-header">
+                    
+                        
+                            
+                                <span class="post-card-tags">Technical</span>
+                            
+                        
+                    
+
+                    <h2 class="post-card-title">How I hacked 40 Websites in 7 minutes</h2>
+                </header>
+                <section class="post-card-excerpt">
+                    
+                        <p></p>
+                    
+                </section>
+            </a>
+            <footer class="post-card-meta">
+                
+                    
+                        
+                        <img class="author-profile-image" src="/assets/images/gakonst.jpg" alt="Georgios Konstantopoulos" />
+                        
+                        <span class="post-card-author">
+                            <a href="/author/gakonst/">Georgios Konstantopoulos</a>
+                        </span>
+                    
+                
+                <span class="reading-time">
+                    
+                    
+                      1 min read
+                    
+                </span>
+            </footer>
+        </div>
+    </article>
+
+            
+
+        </div>
+    </div>
+</aside>
+
+<!-- Floating header which appears on-scroll, included from includes/floating-header.hbs -->
+<div class="floating-header">
+    <div class="floating-header-logo">
+        <a href="http://localhost:4000/">
+            
+                <img src="/assets/images/favicon.png" alt="Georgios Konstantopoulos icon" />
+            
+            <span>Georgios Konstantopoulos</span>
+        </a>
+    </div>
+    <span class="floating-header-divider">&mdash;</span>
+    <div class="floating-header-title">A Deep Dive on RSA Accumulators</div>
+    <div class="floating-header-share">
+        <div class="floating-header-share-label">Share this <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <path d="M7.5 15.5V4a1.5 1.5 0 1 1 3 0v4.5h2a1 1 0 0 1 1 1h2a1 1 0 0 1 1 1H18a1.5 1.5 0 0 1 1.5 1.5v3.099c0 .929-.13 1.854-.385 2.748L17.5 23.5h-9c-1.5-2-5.417-8.673-5.417-8.673a1.2 1.2 0 0 1 1.76-1.605L7.5 15.5zm6-6v2m-3-3.5v3.5m6-1v2"/>
+</svg>
+</div>
+        <a class="floating-header-share-tw" href="https://twitter.com/share?text=A+Deep+Dive+on+RSA+Accumulators&amp;url=https://jekyller.github.io/jasper2/deep-dive-rsa-accumulators"
+            onclick="window.open(this.href, 'share-twitter', 'width=550,height=235');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M30.063 7.313c-.813 1.125-1.75 2.125-2.875 2.938v.75c0 1.563-.188 3.125-.688 4.625a15.088 15.088 0 0 1-2.063 4.438c-.875 1.438-2 2.688-3.25 3.813a15.015 15.015 0 0 1-4.625 2.563c-1.813.688-3.75 1-5.75 1-3.25 0-6.188-.875-8.875-2.625.438.063.875.125 1.375.125 2.688 0 5.063-.875 7.188-2.5-1.25 0-2.375-.375-3.375-1.125s-1.688-1.688-2.063-2.875c.438.063.813.125 1.125.125.5 0 1-.063 1.5-.25-1.313-.25-2.438-.938-3.313-1.938a5.673 5.673 0 0 1-1.313-3.688v-.063c.813.438 1.688.688 2.625.688a5.228 5.228 0 0 1-1.875-2c-.5-.875-.688-1.813-.688-2.75 0-1.063.25-2.063.75-2.938 1.438 1.75 3.188 3.188 5.25 4.25s4.313 1.688 6.688 1.813a5.579 5.579 0 0 1 1.5-5.438c1.125-1.125 2.5-1.688 4.125-1.688s3.063.625 4.188 1.813a11.48 11.48 0 0 0 3.688-1.375c-.438 1.375-1.313 2.438-2.563 3.188 1.125-.125 2.188-.438 3.313-.875z"/></svg>
+
+        </a>
+        <a class="floating-header-share-fb" href="https://www.facebook.com/sharer/sharer.php?u=https://jekyller.github.io/jasper2/deep-dive-rsa-accumulators"
+            onclick="window.open(this.href, 'share-facebook','width=580,height=296');return false;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><path d="M19 6h5V0h-5c-3.86 0-7 3.14-7 7v3H8v6h4v16h6V16h5l1-6h-6V7c0-.542.458-1 1-1z"/></svg>
+
+        </a>
+    </div>
+    <progress class="progress" value="0">
+        <div class="progress-container">
+            <span class="progress-bar"></span>
+        </div>
+    </progress>
+</div>
+
+
+<!-- /post -->
+
+<!-- The #contentFor helper here will send everything inside it up to the matching #block helper found in default.hbs -->
+
+
+        <!-- Previous/next page links - displayed on every page -->
+        
+
+        <!-- The footer at the very bottom of the screen -->
+        <footer class="site-footer outer">
+            <div class="site-footer-content inner">
+                <section class="copyright"><a href="http://localhost:4000/">Georgios Konstantopoulos</a> &copy; 2019</section>
+                <!-- <section class="poweredby">Proudly published with <a href="https://jekyllrb.com/">Jekyll</a> &
+                    <a href="https://pages.github.com/" target="_blank" rel="noopener">GitHub Pages</a> using
+                    <a href="https://github.com/jekyller/jasper2" target="_blank" rel="noopener">Jasper2</a></section> -->
+                <nav class="site-footer-nav">
+                    <a href="/">Latest Posts</a>
+                    
+                    <a href="https://twitter.com/gakonst" target="_blank" rel="noopener">Twitter</a>
+                    <!-- <a href="https://ghost.org" target="_blank" rel="noopener">Ghost</a> -->
+                </nav>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- The big email subscribe modal content -->
+    
+
+    <!-- highlight.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.10.0/components/prism-abap.min.js"></script>
+    <script>$(document).ready(function() {
+      $('pre code').each(function(i, block) {
+        hljs.highlightBlock(block);
+      });
+    });</script>
+
+    <!-- jQuery + Fitvids, which makes all video embeds responsive -->
+    <script
+        src="https://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous">
+    </script>
+    <script type="text/javascript" src="/assets/js/jquery.fitvids.js"></script>
+    <script type="text/javascript" src="https://demo.ghost.io/assets/js/jquery.fitvids.js?v=724281a32e"></script>
+
+
+    <!-- Paginator increased to "infinit" in _config.yml -->
+    <!-- if paginator.posts  -->
+    <!-- <script>
+        var maxPages = parseInt('');
+    </script>
+    <script src="/assets/js/infinitescroll.js"></script> -->
+    <!-- /endif -->
+
+    
+
+
+    <!-- Add Google Analytics  -->
+    <!-- Google Analytics Tracking code -->
+ <script>
+  (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+  (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+  m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+  })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+
+  ga('create', 'UA-139131382-1', 'auto');
+  ga('send', 'pageview');
+
+ </script>
+
+
+    <!-- The #block helper will pull in data from the #contentFor other template files. In this case, there's some JavaScript which we only want to use in post.hbs, but it needs to be included down here, after jQuery has already loaded. -->
+    
+        <script>
+
+// NOTE: Scroll performance is poor in Safari
+// - this appears to be due to the events firing much more slowly in Safari.
+//   Dropping the scroll event and using only a raf loop results in smoother
+//   scrolling but continuous processing even when not scrolling
+$(document).ready(function () {
+    // Start fitVids
+    var $postContent = $(".post-full-content");
+    $postContent.fitVids();
+    // End fitVids
+
+    var progressBar = document.querySelector('progress');
+    var header = document.querySelector('.floating-header');
+    var title = document.querySelector('.post-full-title');
+
+    var lastScrollY = window.scrollY;
+    var lastWindowHeight = window.innerHeight;
+    var lastDocumentHeight = $(document).height();
+    var ticking = false;
+
+    function onScroll() {
+        lastScrollY = window.scrollY;
+        requestTick();
+    }
+
+    function onResize() {
+        lastWindowHeight = window.innerHeight;
+        lastDocumentHeight = $(document).height();
+        requestTick();
+    }
+
+    function requestTick() {
+        if (!ticking) {
+            requestAnimationFrame(update);
+        }
+        ticking = true;
+    }
+
+    function update() {
+        var trigger = title.getBoundingClientRect().top + window.scrollY;
+        var triggerOffset = title.offsetHeight + 35;
+        var progressMax = lastDocumentHeight - lastWindowHeight;
+
+        // show/hide floating header
+        if (lastScrollY >= trigger + triggerOffset) {
+            header.classList.add('floating-active');
+        } else {
+            header.classList.remove('floating-active');
+        }
+
+        progressBar.setAttribute('max', progressMax);
+        progressBar.setAttribute('value', lastScrollY);
+
+        ticking = false;
+    }
+
+    window.addEventListener('scroll', onScroll, {passive: true});
+    window.addEventListener('resize', onResize, false);
+
+    update();
+});
+</script>
+
+    
+
+    <!-- Ghost outputs important scripts and data with this tag - it should always be the very last thing before the closing body tag -->
+    <!-- ghost_foot -->
+
+</body>
+</html>
