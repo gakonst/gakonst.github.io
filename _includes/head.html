@@ -8,7 +8,7 @@
           src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-MML-AM_CHTML">
     </script>
 
-    {% if page.content and page.current == 'post' or page.current == 'about' %}
+    {% if page.content and page.current == 'post' or page.current == 'about' or page.current == 'talks' %}
         {% assign excerpt = page.content | strip_html | truncatewords: 50, "" %}
      {% endif %} <!--title below is coming from _includes/dynamic_title-->
     <meta property="og:site_name" content="{{ site.title }}" />

@@ -28,7 +28,7 @@ twitter: gakonst # replace by your username
 # facebook: ghost # replace by your username
 
 # Disqus
-disqus: false
+disqus: False
 disqus_shortname: jekyller # replace with your disqus username
 
 # Google Analytics
