@@ -12,7 +12,7 @@ baseurl: /
 title: Georgios Konstantopoulos
 description: Simplified technical insights on security, cryptography and distributed systems.
 cover: assets/images/blog-cover.jpg
-logo: assets/images/logo.png
+logo: False
 logo_dark: assets/images/favicon.png
 favicon: assets/images/favicon.png
 production_url: https://gakonst.com/
