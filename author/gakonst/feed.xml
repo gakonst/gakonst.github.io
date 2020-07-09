@@ -2,10 +2,10 @@
 
 <feed xmlns="http://www.w3.org/2005/Atom" >
   <generator uri="https://jekyllrb.com/" version="3.7.4">Jekyll</generator>
-  <link href="http://localhost:4000/author/gakonst/feed.xml" rel="self" type="application/atom+xml" />
-  <link href="http://localhost:4000/" rel="alternate" type="text/html" />
-  <updated>2019-04-29T14:52:48+03:00</updated>
-  <id>http://localhost:4000/author/gakonst/feed.xml</id>
+  <link href="/author/gakonst/feed.xml" rel="self" type="application/atom+xml" />
+  <link href="/" rel="alternate" type="text/html" />
+  <updated>2020-07-09T11:45:49+03:00</updated>
+  <id>/author/gakonst/feed.xml</id>
 
   
   
@@ -16,7 +16,7 @@
   
 
   
-    <subtitle>Simplified technical insights on security, cryptography and distributed systems.</subtitle>
+    <subtitle>Cryptography, Security, Distributed Systems</subtitle>
   
 
   
@@ -33,11 +33,11 @@
   
     <entry>
       <title type="html">How I hacked 40 Websites in 7 minutes</title>
-      <link href="http://localhost:4000/how-i-hacked-40-websites-in-7-minutes" rel="alternate" type="text/html" title="How I hacked 40 Websites in 7 minutes" />
+      <link href="/how-i-hacked-40-websites-in-7-minutes" rel="alternate" type="text/html" title="How I hacked 40 Websites in 7 minutes" />
       <published>2019-04-01T00:00:00+03:00</published>
       <updated>2019-04-01T00:00:00+03:00</updated>
-      <id>http://localhost:4000/how-i-hacked-40-websites-in-7-minutes</id>
-      <content type="html" xml:base="http://localhost:4000/how-i-hacked-40-websites-in-7-minutes">&lt;h3 id=&quot;how-i-went-from-0-knowledge-to-owning-35-databases-in-7-minutes-and-how-after-a-short-break-i-proceed-to-total-server-takeover&quot;&gt;How I went from 0 knowledge to owning 35 databases in 7 minutes and how after a short break I proceed to total server takeover.&lt;/h3&gt;
+      <id>/how-i-hacked-40-websites-in-7-minutes</id>
+      <content type="html" xml:base="/how-i-hacked-40-websites-in-7-minutes">&lt;h3 id=&quot;how-i-went-from-0-knowledge-to-owning-35-databases-in-7-minutes-and-how-after-a-short-break-i-proceed-to-total-server-takeover&quot;&gt;How I went from 0 knowledge to owning 35 databases in 7 minutes and how after a short break I proceed to total server takeover.&lt;/h3&gt;
 
 &lt;hr /&gt;
 
@@ -375,11 +375,11 @@ CentOS Linux release 7.2.1511 &lt;span class=&quot;o&quot;&gt;(&lt;/span&gt;Core
   
     <entry>
       <title type="html">A Deep Dive on RSA Accumulators</title>
-      <link href="http://localhost:4000/deep-dive-rsa-accumulators" rel="alternate" type="text/html" title="A Deep Dive on RSA Accumulators" />
+      <link href="/deep-dive-rsa-accumulators" rel="alternate" type="text/html" title="A Deep Dive on RSA Accumulators" />
       <published>2019-04-01T00:00:00+03:00</published>
       <updated>2019-04-01T00:00:00+03:00</updated>
-      <id>http://localhost:4000/deep-dive-rsa-accumulators</id>
-      <content type="html" xml:base="http://localhost:4000/deep-dive-rsa-accumulators">&lt;h3 id=&quot;by-georgios-konstantopoulos&quot;&gt;by &lt;a href=&quot;http://twitter.com/@gakonst&quot;&gt;Georgios Konstantopoulos&lt;/a&gt;&lt;/h3&gt;
+      <id>/deep-dive-rsa-accumulators</id>
+      <content type="html" xml:base="/deep-dive-rsa-accumulators">&lt;h3 id=&quot;by-georgios-konstantopoulos&quot;&gt;by &lt;a href=&quot;http://twitter.com/@gakonst&quot;&gt;Georgios Konstantopoulos&lt;/a&gt;&lt;/h3&gt;
 
 &lt;p&gt;I make a deep dive on RSA Accumulators and succinct proofs for hidden order groups, while providing a review of the recently released paper by Stanford’s Applied Cryptography Group. This review was included in &lt;a href=&quot;https://mitcryptocurrencyresearch.substack.com/p/mit-dcis-cryptocurrency-research-c31&quot;&gt;MIT’s Cryptocurrency Research Review&lt;/a&gt;.&lt;/p&gt;
 

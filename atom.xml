@@ -2,9 +2,9 @@
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
   <channel>
     <title> - Articles</title>
-    <description>Simplified technical insights on security, cryptography and distributed systems.</description>
+    <description>Cryptography, Security, Distributed Systems</description>
     <link>
-    http://localhost:4000</link>
+    </link>
     
       
       <item>
@@ -16,8 +16,8 @@
         
         <pubDate>Mon, 01 Apr 2019 00:00:00 +0300</pubDate>
         <link>
-        http://localhost:4000/deep-dive-rsa-accumulators</link>
-        <guid isPermaLink="true">http://localhost:4000/deep-dive-rsa-accumulators</guid>
+        /deep-dive-rsa-accumulators</link>
+        <guid isPermaLink="true">/deep-dive-rsa-accumulators</guid>
       </item>
       
     
@@ -31,8 +31,8 @@
         
         <pubDate>Mon, 01 Apr 2019 00:00:00 +0300</pubDate>
         <link>
-        http://localhost:4000/how-i-hacked-40-websites-in-7-minutes</link>
-        <guid isPermaLink="true">http://localhost:4000/how-i-hacked-40-websites-in-7-minutes</guid>
+        /how-i-hacked-40-websites-in-7-minutes</link>
+        <guid isPermaLink="true">/how-i-hacked-40-websites-in-7-minutes</guid>
       </item>
       
     
