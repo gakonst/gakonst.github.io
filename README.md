@@ -1,1 +1,1 @@
-the html behind my personal website: [gakonst.com](https://gakonst.com)
+the html behind my personal website: [bcanergul.blog](https://bcanergul.blog)

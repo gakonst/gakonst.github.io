@@ -47,7 +47,7 @@ a:visited {
 
 code,
 .code {
-  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-family: 'SF Pro Display', sans-serif;
   font-size: 1.125rem;
   line-height: 1.6;
   padding: 0;
