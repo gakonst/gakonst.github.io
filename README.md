@@ -1,1 +1,1 @@
-the html behind my personal website: [bcanergul.blog](https://bcanergul.blog)
+the html behind my personal website: [ergul.blog](https://ergul.blog)
