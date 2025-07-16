@@ -4,8 +4,11 @@
   "installCommand": "pnpm install",
   "framework": "vite",
   "functions": {
-    "api/files/*.ts": {
-      "includeFiles": "content/**"
+    "api/files/index.ts": {
+      "includeFiles": "content/**/*.md"
+    },
+    "api/files/[slug].ts": {
+      "includeFiles": "content/**/*.md"
     }
   }
 }

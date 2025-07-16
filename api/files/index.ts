@@ -35,12 +35,16 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
     // Check if content directory exists
     try {
       await fs.access(contentDir)
+      const dirContents = await fs.readdir(process.cwd())
+      console.log('Root directory contents:', dirContents)
     } catch (err) {
       console.error('Content directory not found:', contentDir)
+      const dirContents = await fs.readdir(process.cwd())
       return res.status(500).json({ 
         error: 'Content directory not found',
         path: contentDir,
-        cwd: process.cwd()
+        cwd: process.cwd(),
+        rootContents: dirContents
       })
     }
     
