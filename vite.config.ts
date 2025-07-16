@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import type { Plugin } from 'vite'
-import { handleContentApi } from './api/content'
+import { handleContentApi } from './api-dev/content'
 
 function apiPlugin(): Plugin {
   return {
