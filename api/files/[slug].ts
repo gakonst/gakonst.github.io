@@ -25,17 +25,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'Invalid slug parameter' })
   }
 
+  // Handle both string and array cases for dynamic routes
+  const requestPath = Array.isArray(slug) ? slug.join('/') : slug
+  
+  // Security: prevent directory traversal
+  const sanitizedPath = requestPath.replace(/\.\./g, '').replace(/^\/+/, '')
+  const filePath = path.join(contentDir, `${sanitizedPath}.md`)
+
   try {
     // Log debugging info
     console.log('Current working directory:', process.cwd())
     console.log('Content directory path:', contentDir)
     console.log('Requested slug:', slug)
-    // Handle both string and array cases for dynamic routes
-    const requestPath = Array.isArray(slug) ? slug.join('/') : slug
-    
-    // Security: prevent directory traversal
-    const sanitizedPath = requestPath.replace(/\.\./g, '').replace(/^\/+/, '')
-    const filePath = path.join(contentDir, `${sanitizedPath}.md`)
+    console.log('File path:', filePath)
     
     // Check if file exists
     try {
