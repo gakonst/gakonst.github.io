@@ -26,8 +26,24 @@ async function getAllMarkdownFiles(dir: string): Promise<string[]> {
   return files
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(_req: VercelRequest, res: VercelResponse) {
   try {
+    // Log debugging info
+    console.log('Current working directory:', process.cwd())
+    console.log('Content directory path:', contentDir)
+    
+    // Check if content directory exists
+    try {
+      await fs.access(contentDir)
+    } catch (err) {
+      console.error('Content directory not found:', contentDir)
+      return res.status(500).json({ 
+        error: 'Content directory not found',
+        path: contentDir,
+        cwd: process.cwd()
+      })
+    }
+    
     const files = await getAllMarkdownFiles(contentDir)
     
     const contentFiles = await Promise.all(
@@ -52,6 +68,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     res.status(200).json({ files: contentFiles })
   } catch (error) {
     console.error('API Error:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
+    })
   }
 }

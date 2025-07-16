@@ -5,10 +5,7 @@ import { porto } from 'porto/wagmi'
 export const config = createConfig({
   chains: [mainnet],
   connectors: [
-    porto({
-      appName: 'Georgios Konstantopoulos',
-      appLogoUrl: 'https://gakonst.com/icon.png',
-    }),
+    porto(),
   ],
   transports: {
     [mainnet.id]: http(),

@@ -2,5 +2,10 @@
   "buildCommand": "pnpm build",
   "outputDirectory": "dist",
   "installCommand": "pnpm install",
-  "framework": "vite"
+  "framework": "vite",
+  "functions": {
+    "api/files/*.ts": {
+      "includeFiles": "content/**"
+    }
+  }
 }

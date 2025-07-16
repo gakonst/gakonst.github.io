@@ -26,6 +26,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Log debugging info
+    console.log('Current working directory:', process.cwd())
+    console.log('Content directory path:', contentDir)
+    console.log('Requested slug:', slug)
     // Handle both string and array cases for dynamic routes
     const requestPath = Array.isArray(slug) ? slug.join('/') : slug
     
@@ -54,6 +58,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     })
   } catch (error) {
     console.error('API Error:', error)
-    res.status(500).json({ error: 'Internal server error' })
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      slug,
+      path: filePath,
+      cwd: process.cwd()
+    })
   }
 }
